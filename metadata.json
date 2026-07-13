@@ -1,0 +1,6 @@
+{
+  "name": "HSEO Portal",
+  "description": "Centralized Health, Safety, and Environment Occupational platform for multi-user compliance tracking and safety program management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
