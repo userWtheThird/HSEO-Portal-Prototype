@@ -25,9 +25,9 @@ export const SIMULATED_USERS: User[] = [
   },
   {
     id: 'user_ftm_1',
-    name: 'FTM Person 1',
-    email: 'ftm1@hseo-portal.net',
-    role: 'FTM',
+    name: 'WOO Chun Fai',
+    email: 'wcf@hseo-portal.net',
+    role: 'Field Team Member',
     avatarColor: 'bg-teal-600 text-white',
     title: 'Field Team Member'
   },
@@ -80,7 +80,7 @@ export const SIMULATED_PERSONS: Person[] = [
     name: 'FTM Person 1',
     role: 'Field Team Member',
     department: 'HSEO',
-    assignedDepartments: ['Physics', 'Chemistry'],
+    assignedDepartments: ['PHYS'],
     email: 'ftm1@hseo-portal.net',
     phone: '+1 (555) 000-0001',
     title: 'Field Team Member 1'
@@ -90,7 +90,7 @@ export const SIMULATED_PERSONS: Person[] = [
     name: 'FTM Person 2',
     role: 'Field Team Member',
     department: 'HSEO',
-    assignedDepartments: ['Physics', 'Chemistry'],
+    assignedDepartments: ['CHEM'],
     email: 'ftm2@hseo-portal.net',
     phone: '+1 (555) 000-0002',
     title: 'Field Team Member 2'
@@ -100,7 +100,7 @@ export const SIMULATED_PERSONS: Person[] = [
     name: 'FTM Person 3',
     role: 'Field Team Member',
     department: 'HSEO',
-    assignedDepartments: ['Physics', 'Chemistry'],
+    assignedDepartments: ['OKT'],
     email: 'ftm3@hseo-portal.net',
     phone: '+1 (555) 000-0003',
     title: 'Field Team Member 3'
@@ -110,7 +110,7 @@ export const SIMULATED_PERSONS: Person[] = [
     name: 'FTM Person 4',
     role: 'Field Team Member',
     department: 'HSEO',
-    assignedDepartments: ['Physics', 'Chemistry'],
+    assignedDepartments: ['LIFS'],
     email: 'ftm4@hseo-portal.net',
     phone: '+1 (555) 000-0004',
     title: 'Field Team Member 4'
@@ -120,8 +120,7 @@ export const SIMULATED_PERSONS: Person[] = [
     name: 'Marcus YAN',
     role: 'Staff',
     department: 'LIFS',
-    assignedDepartments: ['Physics', 'Chemistry'],
-    email: 'ftm5@hseo-portal.net',
+    email: 'lifs1@hseo-portal.net',
     phone: '+1 (555) 000-0005',
     title: 'STO'
   },
@@ -130,8 +129,7 @@ export const SIMULATED_PERSONS: Person[] = [
     name: 'Ting XIE',
     role: 'Principal Investigator (PI)',
     department: 'LIFS',
-    assignedDepartments: ['Physics', 'Chemistry'],
-    email: 'ftm6@hseo-portal.net',
+    email: 'lifs2@hseo-portal.net',
     phone: '+1 (555) 000-0006',
     title: 'Professor'
   },
@@ -140,50 +138,45 @@ export const SIMULATED_PERSONS: Person[] = [
     name: 'Momo WONG',
     role: 'Staff',
     department: 'LIFS',
-    assignedDepartments: ['Physics', 'Chemistry'],
     email: 'ftm7@hseo-portal.net',
     phone: '+1 (555) 000-0007',
     title: 'TO'
   },
   {
-    id: 'pers_ftm_8',
-    name: 'FTM Person 8',
-    role: 'Field Team Member',
+    id: 'pers_phys_1',
+    name: 'Laserman TAN',
+    role: 'Principal Investigator (PI)',
     department: 'PHYS',
-    assignedDepartments: ['Physics', 'Chemistry'],
-    email: 'ftm8@hseo-portal.net',
+    email: 'phys1@hseo-portal.net',
     phone: '+1 (555) 000-0008',
-    title: 'Field Team Member 8'
+    title: 'Professor'
   },
   {
-    id: 'pers_ftm_9',
-    name: 'FTM Person 9',
-    role: 'Field Team Member',
+    id: 'pers_phys_2',
+    name: 'TK Cheung',
+    role: 'Staff',
     department: 'PHYS',
-    assignedDepartments: ['Physics', 'Chemistry'],
-    email: 'ftm9@hseo-portal.net',
+    email: 'phys2@hseo-portal.net',
     phone: '+1 (555) 000-0009',
-    title: 'Field Team Member 9'
+    title: 'Manager'
   },
   {
-    id: 'pers_ftm_10',
-    name: 'FTM Person 10',
-    role: 'Field Team Member',
+    id: 'pers_phys_3',
+    name: 'Someone LING',
+    role: 'Staff',
     department: 'PHYS',
-    assignedDepartments: ['Physics', 'Chemistry'],
-    email: 'ftm10@hseo-portal.net',
+    email: 'phys3@hseo-portal.net',
     phone: '+1 (555) 000-0010',
-    title: 'Field Team Member 10'
+    title: 'TO'
   },
   {
-    id: 'pers_ftm_11',
-    name: 'FTM Person 11',
-    role: 'Field Team Member',
+    id: 'pers_chem_1',
+    name: 'Chemist GONG',
+    role: 'Staff',
     department: 'CHEM',
-    assignedDepartments: ['Physics', 'Chemistry'],
-    email: 'ftm11@hseo-portal.net',
+    email: 'chem1@hseo-portal.net',
     phone: '+1 (555) 000-0011',
-    title: 'Field Team Member 11'
+    title: 'TO'
   },
   {
     id: 'pers_sarah',
@@ -192,25 +185,25 @@ export const SIMULATED_PERSONS: Person[] = [
     department: 'CHEM',
     email: 'sarah.jenkins@hseo-portal.net',
     phone: '+1 (555) 019-2831',
-    title: 'HSE Director & Chief Compliance Officer'
+    title: 'Professor'
   },
   {
     id: 'pers_elena',
-    name: 'Dr. Elena Rostova',
-    role: 'Principal Investigator (PI)',
+    name: 'Elena Rostova',
+    role: 'Staff',
     department: 'OKT',
     email: 'elena.rostova@hseo-portal.net',
     phone: '+1 (555) 019-4822',
-    title: 'Professor of Nuclear Physics'
+    title: 'Admin'
   },
   {
-    id: 'pers_marcus',
-    name: 'Marcus Chen',
+    id: 'pers_MJ',
+    name: 'MJ Dancer',
     role: 'HSEO Management',
     department: 'OKT',
-    email: 'marcus.chen@hseo-portal.net',
+    email: 'mjj@hseo-portal.net',
     phone: '+1 (555) 019-3841',
-    title: 'Principal HSE Auditor'
+    title: 'Senior Manager'
   },
   {
     id: 'pers_james',
@@ -219,22 +212,22 @@ export const SIMULATED_PERSONS: Person[] = [
     department: 'OKT',
     email: 'james.rodriguez@hseo-portal.net',
     phone: '+1 (555) 019-5833',
-    title: 'Senior Operations Lab Supervisor'
+    title: 'Senior Operations Supervisor'
   },
   {
     id: 'pers_nisha',
     name: 'Nisha Patel',
-    role: 'Staff',
+    role: 'HSEO Management',
     department: 'HSEO',
     email: 'nisha.patel@hseo-portal.net',
     phone: '+1 (555) 019-6844',
-    title: 'Lead Utilities Engineer'
+    title: 'Senior Manager'
   },
   {
     id: 'pers_robert',
     name: 'Robert Vance',
     role: 'Staff',
-    department: 'HSEO',
+    department: 'PHYS',
     email: 'robert.vance@hseo-portal.net',
     phone: '+1 (555) 019-7811',
     title: 'Research Associate'
@@ -254,24 +247,24 @@ export const SIMULATED_PERSONS: Person[] = [
 export const SIMULATED_LOCATIONS: Location[] = [
   {
     id: 'loc_chem_prep',
-    building: 'Main Science Building',
-    roomNumber: '302',
-    spaceID: 'Main Science Building302',
+    building: 'UST',
+    roomNumber: '1302',
+    spaceID: 'UST1302',
     roomNature: 'Chemical Prep Lab',
     piIds: ['pers_elena'],
-    department: 'Chemistry',
-    contactPersonIds: ['pers_james', 'pers_nisha'],
+    department: 'CHEM',
+    contactPersonIds: ['pers_james', 'pers_chem1'],
     status: 'Active'
   },
   {
     id: 'loc_phys_lab',
-    building: 'Physics Wing A',
-    roomNumber: '105',
-    spaceID: 'Physics Wing A105',
+    building: 'UST',
+    roomNumber: '1105',
+    spaceID: 'UST1105',
     roomNature: 'Nuclear Physics Lab Storage B',
-    piIds: ['pers_elena'],
+    piIds: ['pers_phys_1'],
     department: 'Physics',
-    contactPersonIds: ['pers_robert'],
+    contactPersonIds: ['pers_phys_2'],
     status: 'Active'
   },
   {
