@@ -6,8 +6,8 @@ const ftms = [];
 for (let i = 1; i <= 11; i++) {
   ftms.push(`  {
     id: 'pers_ftm_${i}',
-    name: 'FTM Person ${i}',
-    role: 'FTM',
+    name: 'Field Team Member ${i}',
+    role: 'Field Team Member',
     department: 'HSEO',
     assignedDepartments: ['Physics', 'Chemistry'],
     email: 'ftm${i}@hseo-portal.net',
