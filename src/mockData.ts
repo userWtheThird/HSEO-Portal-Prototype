@@ -116,40 +116,40 @@ export const SIMULATED_PERSONS: Person[] = [
     title: 'Field Team Member 4'
   },
   {
-    id: 'pers_ftm_5',
-    name: 'FTM Person 5',
-    role: 'Field Team Member',
-    department: 'HSEO',
+    id: 'pers_lifs_1',
+    name: 'Marcus YAN',
+    role: 'Staff',
+    department: 'LIFS',
     assignedDepartments: ['Physics', 'Chemistry'],
     email: 'ftm5@hseo-portal.net',
     phone: '+1 (555) 000-0005',
-    title: 'Field Team Member 5'
+    title: 'STO'
   },
   {
-    id: 'pers_ftm_6',
-    name: 'FTM Person 6',
-    role: 'Field Team Member',
-    department: 'HSEO',
+    id: 'pers_lifs_2',
+    name: 'Ting XIE',
+    role: 'Principal Investigator (PI)',
+    department: 'LIFS',
     assignedDepartments: ['Physics', 'Chemistry'],
     email: 'ftm6@hseo-portal.net',
     phone: '+1 (555) 000-0006',
-    title: 'Field Team Member 6'
+    title: 'Professor'
   },
   {
-    id: 'pers_ftm_7',
-    name: 'FTM Person 7',
-    role: 'Field Team Member',
-    department: 'HSEO',
+    id: 'pers_lifs_3',
+    name: 'Momo WONG',
+    role: 'Staff',
+    department: 'LIFS',
     assignedDepartments: ['Physics', 'Chemistry'],
     email: 'ftm7@hseo-portal.net',
     phone: '+1 (555) 000-0007',
-    title: 'Field Team Member 7'
+    title: 'TO'
   },
   {
     id: 'pers_ftm_8',
     name: 'FTM Person 8',
     role: 'Field Team Member',
-    department: 'HSEO',
+    department: 'PHYS',
     assignedDepartments: ['Physics', 'Chemistry'],
     email: 'ftm8@hseo-portal.net',
     phone: '+1 (555) 000-0008',
@@ -159,7 +159,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_ftm_9',
     name: 'FTM Person 9',
     role: 'Field Team Member',
-    department: 'HSEO',
+    department: 'PHYS',
     assignedDepartments: ['Physics', 'Chemistry'],
     email: 'ftm9@hseo-portal.net',
     phone: '+1 (555) 000-0009',
@@ -169,7 +169,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_ftm_10',
     name: 'FTM Person 10',
     role: 'Field Team Member',
-    department: 'HSEO',
+    department: 'PHYS',
     assignedDepartments: ['Physics', 'Chemistry'],
     email: 'ftm10@hseo-portal.net',
     phone: '+1 (555) 000-0010',
@@ -179,7 +179,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_ftm_11',
     name: 'FTM Person 11',
     role: 'Field Team Member',
-    department: 'HSEO',
+    department: 'CHEM',
     assignedDepartments: ['Physics', 'Chemistry'],
     email: 'ftm11@hseo-portal.net',
     phone: '+1 (555) 000-0011',
@@ -189,7 +189,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_sarah',
     name: 'Sarah Jenkins',
     role: 'Principal Investigator (PI)',
-    department: 'Facilities & Utilities',
+    department: 'CHEM',
     email: 'sarah.jenkins@hseo-portal.net',
     phone: '+1 (555) 019-2831',
     title: 'HSE Director & Chief Compliance Officer'
@@ -198,7 +198,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_elena',
     name: 'Dr. Elena Rostova',
     role: 'Principal Investigator (PI)',
-    department: 'Physics & Advanced Materials',
+    department: 'OKT',
     email: 'elena.rostova@hseo-portal.net',
     phone: '+1 (555) 019-4822',
     title: 'Professor of Nuclear Physics'
@@ -207,7 +207,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_marcus',
     name: 'Marcus Chen',
     role: 'HSEO Management',
-    department: 'HSEO Compliance',
+    department: 'OKT',
     email: 'marcus.chen@hseo-portal.net',
     phone: '+1 (555) 019-3841',
     title: 'Principal HSE Auditor'
@@ -216,7 +216,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_james',
     name: 'James Rodriguez',
     role: 'Staff',
-    department: 'Material Science Lab',
+    department: 'OKT',
     email: 'james.rodriguez@hseo-portal.net',
     phone: '+1 (555) 019-5833',
     title: 'Senior Operations Lab Supervisor'
@@ -225,7 +225,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_nisha',
     name: 'Nisha Patel',
     role: 'Staff',
-    department: 'Facilities Engineering',
+    department: 'HSEO',
     email: 'nisha.patel@hseo-portal.net',
     phone: '+1 (555) 019-6844',
     title: 'Lead Utilities Engineer'
@@ -234,7 +234,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_robert',
     name: 'Robert Vance',
     role: 'Staff',
-    department: 'Quantum Physics Division',
+    department: 'HSEO',
     email: 'robert.vance@hseo-portal.net',
     phone: '+1 (555) 019-7811',
     title: 'Research Associate'
@@ -243,7 +243,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_john',
     name: 'John Thompson',
     role: 'Staff',
-    department: 'Administration',
+    department: 'PHYS',
     email: 'john.thompson@hseo-portal.net',
     phone: '+1 (555) 019-8900',
     title: 'Office Administrator'
