@@ -251,6 +251,27 @@ export interface IeqComplaint {
   piId?: string;
 }
 
+// New IEQ Sampling interfaces
+export interface IeqParameter {
+  id: string;
+  name: string;
+  unit: string;
+  safeThreshold: number;
+  isDefault?: boolean;
+}
+
+export interface IeqSample {
+  id: string;
+  locationId: string;
+  location: string;
+  samplingType: 'renovated' | 'adhoc';
+  date: string;
+  testerName: string;
+  status: 'pass' | 'action_required' | 'fail';
+  readings: Record<string, number>;
+  notes?: string;
+}
+
 export interface RuaGroup {
   id: string;
   piId: string;

@@ -32,7 +32,9 @@ import {
   HazardousWasteRequest, 
   WaterLog, 
   IeqLog, 
-  IeqComplaint 
+  IeqComplaint,
+  IeqParameter,
+  IeqSample 
 } from './types';
 
 import { 
@@ -48,7 +50,9 @@ import {
   INITIAL_HAZARDOUS_WASTE, 
   INITIAL_WATER_LOGS, 
   INITIAL_IEQ_LOGS, 
-  INITIAL_IEQ_COMPLAINTS 
+  INITIAL_IEQ_COMPLAINTS,
+  INITIAL_IEQ_PARAMETERS,
+  INITIAL_IEQ_SAMPLES 
 } from './mockData';
 
 // Sub-component tabs
@@ -82,6 +86,8 @@ export default function App() {
   const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
   const [ieqLogs, setIeqLogs] = useState<IeqLog[]>([]);
   const [ieqComplaints, setIeqComplaints] = useState<IeqComplaint[]>([]);
+  const [ieqParameters, setIeqParameters] = useState<IeqParameter[]>([]);
+  const [ieqSamples, setIeqSamples] = useState<IeqSample[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
 
@@ -109,6 +115,8 @@ export default function App() {
         setWaterLogs(parsed.waterLogs || INITIAL_WATER_LOGS);
         setIeqLogs(parsed.ieqLogs || INITIAL_IEQ_LOGS);
         setIeqComplaints(parsed.ieqComplaints || INITIAL_IEQ_COMPLAINTS);
+        setIeqParameters(parsed.ieqParameters || INITIAL_IEQ_PARAMETERS);
+        setIeqSamples(parsed.ieqSamples || INITIAL_IEQ_SAMPLES);
         setPersons(parsed.persons || SIMULATED_PERSONS);
         setLocations(parsed.locations || SIMULATED_LOCATIONS);
         
@@ -129,6 +137,8 @@ export default function App() {
         setWaterLogs(INITIAL_WATER_LOGS);
         setIeqLogs(INITIAL_IEQ_LOGS);
         setIeqComplaints(INITIAL_IEQ_COMPLAINTS);
+        setIeqParameters(INITIAL_IEQ_PARAMETERS);
+        setIeqSamples(INITIAL_IEQ_SAMPLES);
         setPersons(SIMULATED_PERSONS);
         setLocations(SIMULATED_LOCATIONS);
       }
@@ -149,6 +159,8 @@ export default function App() {
     waterLogs: WaterLog[];
     ieqLogs: IeqLog[];
     ieqComplaints: IeqComplaint[];
+    ieqParameters: IeqParameter[];
+    ieqSamples: IeqSample[];
     persons: Person[];
     locations: Location[];
   }>) => {
@@ -164,6 +176,8 @@ export default function App() {
         waterLogs: updated.waterLogs ?? waterLogs,
         ieqLogs: updated.ieqLogs ?? ieqLogs,
         ieqComplaints: updated.ieqComplaints ?? ieqComplaints,
+        ieqParameters: updated.ieqParameters ?? ieqParameters,
+        ieqSamples: updated.ieqSamples ?? ieqSamples,
         persons: updated.persons ?? persons,
         locations: updated.locations ?? locations
       };
@@ -461,23 +475,32 @@ export default function App() {
   };
 
   // Program 7: IEQ handlers
-  const handleAddComplaint = (newComp: IeqComplaint, logDetails: string) => {
-    const nextComplaints = [newComp, ...ieqComplaints];
-    setIeqComplaints(nextComplaints);
-    const nextLogs = addAuditLog('Logged Occupant IEQ Feedback', logDetails, 'IEQ');
-    saveState({ ieqComplaints: nextComplaints, auditLogs: nextLogs });
+  const handleAddIeqSample = (newSample: IeqSample, logDetails: string) => {
+    const nextSamples = [newSample, ...ieqSamples];
+    setIeqSamples(nextSamples);
+    const nextLogs = addAuditLog('Added IEQ Sample', logDetails, 'IEQ');
+    saveState({ ieqSamples: nextSamples, auditLogs: nextLogs });
   };
 
-  const handleResolveComplaint = (complaintId: string, assignedAction: string, logDetails: string) => {
-    const nextComplaints = ieqComplaints.map(c => {
-      if (c.id === complaintId) {
-        return { ...c, status: 'resolved' as const, assignedAction };
-      }
-      return c;
-    });
-    setIeqComplaints(nextComplaints);
-    const nextLogs = addAuditLog('Resolved Occupancy IEQ Grievance', logDetails, 'IEQ');
-    saveState({ ieqComplaints: nextComplaints, auditLogs: nextLogs });
+  const handleUpdateIeqSample = (updatedSample: IeqSample, logDetails: string) => {
+    const nextSamples = ieqSamples.map(s => s.id === updatedSample.id ? updatedSample : s);
+    setIeqSamples(nextSamples);
+    const nextLogs = addAuditLog('Updated IEQ Sample', logDetails, 'IEQ');
+    saveState({ ieqSamples: nextSamples, auditLogs: nextLogs });
+  };
+
+  const handleAddIeqParameter = (newParam: IeqParameter, logDetails: string) => {
+    const nextParams = [...ieqParameters, newParam];
+    setIeqParameters(nextParams);
+    const nextLogs = addAuditLog('Added IEQ Parameter', logDetails, 'IEQ');
+    saveState({ ieqParameters: nextParams, auditLogs: nextLogs });
+  };
+
+  const handleDeleteIeqParameter = (paramId: string, logDetails: string) => {
+    const nextParams = ieqParameters.filter(p => p.id !== paramId);
+    setIeqParameters(nextParams);
+    const nextLogs = addAuditLog('Deleted IEQ Parameter', logDetails, 'IEQ');
+    saveState({ ieqParameters: nextParams, auditLogs: nextLogs });
   };
 
   const handleUpdateSensorLog = (updatedLog: IeqLog) => {
@@ -489,17 +512,6 @@ export default function App() {
     });
     setIeqLogs(nextLogs);
     saveState({ ieqLogs: nextLogs });
-
-    // Handle warning notifications dynamically
-    if (updatedLog.ventilationStatus === 'poor') {
-      const poorAlert = `IEQ ALERT: Poor ventilation status at "${updatedLog.location}" (CO2: ${updatedLog.co2} ppm).`;
-      setNotifications(prev => {
-        if (!prev.includes(poorAlert)) {
-          return [poorAlert, ...prev];
-        }
-        return prev;
-      });
-    }
   };
 
   // Reset local state back to initial mock factory settings
@@ -902,11 +914,14 @@ export default function App() {
           {activeTab === 'ieq' && (
             <IeqTab 
               currentUser={currentUser}
-              ieqLogs={ieqLogs}
-              ieqComplaints={ieqComplaints}
-              onAddComplaint={handleAddComplaint}
-              onResolveComplaint={handleResolveComplaint}
-              onUpdateSensorLog={handleUpdateSensorLog}
+              ieqParameters={ieqParameters}
+              ieqSamples={ieqSamples}
+              locations={locations}
+              persons={persons}
+              onAddSample={handleAddIeqSample}
+              onUpdateSample={handleUpdateIeqSample}
+              onAddParameter={handleAddIeqParameter}
+              onDeleteParameter={handleDeleteIeqParameter}
             />
           )}
 

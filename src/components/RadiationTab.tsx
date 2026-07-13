@@ -130,6 +130,16 @@ export default function RadiationTab({
 
   // States for adding source (varies by category)
   const [isAddingSource, setIsAddingSource] = useState(false);
+
+  // Editing sealed source state
+  const [editingSealedSource, setEditingSealedSource] = useState<RadiationSource | null>(null);
+  const [editSrcName, setEditSrcName] = useState('');
+  const [editSrcIsotope, setEditSrcIsotope] = useState('');
+  const [editSrcActivity, setEditSrcActivity] = useState('');
+  const [editSrcLocation, setEditSrcLocation] = useState('');
+  const [editSrcCustodian, setEditSrcCustodian] = useState('');
+  const [editSrcActivityRef, setEditSrcActivityRef] = useState('');
+  const [editSrcRefDate, setEditSrcRefDate] = useState('');
   
   // RUA Persistent State
   const [ruas, setRuas] = useState<Rua[]>([]);
@@ -336,6 +346,22 @@ export default function RadiationTab({
   };
 
   // Single inventory verification check
+  const handleSaveEditSealedSource = () => {
+    if (!editingSealedSource || !onUpdateRadiationSource) return;
+    const updated: RadiationSource = {
+      ...editingSealedSource,
+      sourceName: editSrcName,
+      isotope: editSrcIsotope,
+      activity: editSrcActivity,
+      location: editSrcLocation,
+      custodian: editSrcCustodian,
+      activityReference: editSrcActivityRef,
+      referenceDate: editSrcRefDate,
+    };
+    onUpdateRadiationSource(updated, `Edited sealed source "${editSrcName}" (${editSrcIsotope}).`);
+    setEditingSealedSource(null);
+  };
+
   const handleMarkVerifiedSingle = (source: RadiationSource) => {
     if (!onUpdateRadiationSource) return;
     const todayStr = new Date().toISOString().split('T')[0];
@@ -1320,6 +1346,7 @@ export default function RadiationTab({
                               <th className="px-4 py-3">Department</th>
                               <th className="px-4 py-3">SpaceID</th>
                               <th className="px-4 py-3">Inv. Check Status (Annual)</th>
+                              <th className="px-4 py-3 text-center">Actions</th>
                             </>
                           ) : (
                             <>
@@ -1408,6 +1435,24 @@ export default function RadiationTab({
                                           </div>
                                         );
                                       })()}
+                                    </td>
+                                    <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        onClick={() => {
+                                          setEditingSealedSource(source);
+                                          setEditSrcName(source.sourceName || '');
+                                          setEditSrcIsotope(source.isotope || '');
+                                          setEditSrcActivity(source.activity || '');
+                                          setEditSrcLocation(source.location || '');
+                                          setEditSrcCustodian(source.custodian || '');
+                                          setEditSrcActivityRef(source.activityReference || '');
+                                          setEditSrcRefDate(source.referenceDate || '');
+                                        }}
+                                        className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-amber-600/20 hover:text-amber-400 text-slate-500 transition border border-slate-700/50 hover:border-amber-600/40"
+                                        title="Edit source"
+                                      >
+                                        <Edit className="h-3 w-3" />
+                                      </button>
                                     </td>
                                   </>
                                 ) : inventoryCategory === 'unsealed' ? (
@@ -1902,6 +1947,76 @@ export default function RadiationTab({
             )}
           </div>
 
+        </div>
+      )}
+
+      {/* Edit Sealed Source Modal */}
+      {editingSealedSource && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditingSealedSource(null)}>
+          <div className="bg-slate-900 border border-amber-600/30 rounded-xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Edit className="h-4 w-4 text-amber-500" />
+                <h3 className="text-sm font-bold text-slate-100">Edit Sealed Source</h3>
+              </div>
+              <button onClick={() => setEditingSealedSource(null)} className="text-slate-500 hover:text-slate-300 p-1">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Source Name</label>
+                <input type="text" value={editSrcName} onChange={(e) => setEditSrcName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Isotope</label>
+                  <input type="text" value={editSrcIsotope} onChange={(e) => setEditSrcIsotope(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Radioactivity</label>
+                  <input type="text" value={editSrcActivity} onChange={(e) => setEditSrcActivity(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Location</label>
+                <input type="text" value={editSrcLocation} onChange={(e) => setEditSrcLocation(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Custodian</label>
+                <input type="text" value={editSrcCustodian} onChange={(e) => setEditSrcCustodian(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Activity (Reference)</label>
+                  <input type="text" value={editSrcActivityRef} onChange={(e) => setEditSrcActivityRef(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Reference Date</label>
+                  <input type="date" value={editSrcRefDate} onChange={(e) => setEditSrcRefDate(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-5">
+              <button onClick={() => setEditingSealedSource(null)}
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-2 rounded-lg transition">
+                Cancel
+              </button>
+              <button onClick={handleSaveEditSealedSource}
+                className="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold py-2 rounded-lg transition shadow">
+                Save Changes
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

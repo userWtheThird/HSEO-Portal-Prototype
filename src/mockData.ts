@@ -11,7 +11,9 @@ import {
   HazardousWasteRequest, 
   WaterLog, 
   IeqLog, 
-  IeqComplaint 
+  IeqComplaint,
+  IeqParameter,
+  IeqSample 
 } from './types';
 
 export const SIMULATED_USERS: User[] = [
@@ -27,7 +29,7 @@ export const SIMULATED_USERS: User[] = [
     id: 'user_ftm_1',
     name: 'WOO Chun Fai',
     email: 'wcf@hseo-portal.net',
-    role: 'Field Team Member',
+    role: 'FTM',
     avatarColor: 'bg-teal-600 text-white',
     title: 'Field Team Member'
   },
@@ -886,3 +888,84 @@ export const CHEMICAL_COMPATIBILITY_MATRIX: Record<string, string[]> = {
   reactive: ['acid', 'base', 'solvent', 'toxic', 'radioactive'],
   toxic: ['reactive']
 };
+
+// IEQ Sampling Parameters
+export const INITIAL_IEQ_PARAMETERS: IeqParameter[] = [
+  { id: 'param_radon', name: 'Radon', unit: 'Bq/m\u00B3', safeThreshold: 200, isDefault: true },
+  { id: 'param_co2', name: 'CO2', unit: 'ppm', safeThreshold: 1000, isDefault: true },
+  { id: 'param_tvoc', name: 'TVOC', unit: 'ppb', safeThreshold: 500, isDefault: true },
+  { id: 'param_dust', name: 'Total Dust', unit: 'mg/m\u00B3', safeThreshold: 0.15, isDefault: true },
+  { id: 'param_formaldehyde', name: 'Formaldehyde', unit: 'ppm', safeThreshold: 0.08, isDefault: true },
+];
+
+// IEQ Sampling Records
+export const INITIAL_IEQ_SAMPLES: IeqSample[] = [
+  {
+    id: 'ieq_sample_1',
+    locationId: 'loc_office_space',
+    location: 'Main Office Floor Open Space',
+    samplingType: 'adhoc',
+    date: '2026-07-12',
+    testerName: 'Nisha Patel',
+    status: 'pass',
+    readings: {
+      param_radon: 85,
+      param_co2: 480,
+      param_tvoc: 120,
+      param_dust: 0.04,
+      param_formaldehyde: 0.02,
+    },
+    notes: 'Routine quarterly sampling. All parameters within safe limits.'
+  },
+  {
+    id: 'ieq_sample_2',
+    locationId: 'loc_quantum_optics',
+    location: 'Quantum Optics Lab B-14',
+    samplingType: 'renovated',
+    date: '2026-07-10',
+    testerName: 'Nisha Patel',
+    status: 'action_required',
+    readings: {
+      param_radon: 180,
+      param_co2: 620,
+      param_tvoc: 480,
+      param_dust: 0.09,
+      param_formaldehyde: 0.075,
+    },
+    notes: 'Post-renovation sampling. Formaldehyde approaching threshold; re-test in 2 weeks.'
+  },
+  {
+    id: 'ieq_sample_3',
+    locationId: 'loc_chem_storage',
+    location: 'Chemical Storage Handling Area D',
+    samplingType: 'adhoc',
+    date: '2026-07-08',
+    testerName: 'Marcus Chen',
+    status: 'fail',
+    readings: {
+      param_radon: 95,
+      param_co2: 410,
+      param_tvoc: 850,
+      param_dust: 0.12,
+      param_formaldehyde: 0.03,
+    },
+    notes: 'TVOC exceeds safe threshold. Ventilation upgrade recommended.'
+  },
+  {
+    id: 'ieq_sample_4',
+    locationId: 'loc_chem_prep',
+    location: 'Chemical Prep Lab (Room 302)',
+    samplingType: 'renovated',
+    date: '2026-07-05',
+    testerName: 'Nisha Patel',
+    status: 'pass',
+    readings: {
+      param_radon: 110,
+      param_co2: 550,
+      param_tvoc: 320,
+      param_dust: 0.06,
+      param_formaldehyde: 0.05,
+    },
+    notes: 'Post-renovation baseline. All clear for occupancy.'
+  },
+];
