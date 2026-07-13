@@ -183,6 +183,7 @@ export default function WaterTab({
   const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
   const [logPassFailed, setLogPassFailed] = useState<'Pass' | 'Failed'>('Pass');
   const [logLabReportNo, setLogLabReportNo] = useState('');
+  const [logPurpose, setLogPurpose] = useState<'Scheduled' | 'Ad-hoc' | 'Pre-use' | 'Re-test'>('Scheduled');
   // Record structure supporting tested checkbox & above-reporting checkbox and numeric input value
   const [logParamsState, setLogParamsState] = useState<Record<string, { tested: boolean; isAbove: boolean; value: string }>>({});
 
@@ -203,6 +204,9 @@ export default function WaterTab({
   const [sourceParams, setSourceParams] = useState<WaterSourceParameter[]>([
     { name: 'pH', unit: 'pH', reportingLevel: 6.5, referenceLevel: 8.5 }
   ]);
+
+  // --- SELECTED LOG FOR DETAIL PANEL ---
+  const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
 
   // Load water configurations on mount
   useEffect(() => {
@@ -376,6 +380,7 @@ export default function WaterTab({
       temperature: 22.0, // Backwards-compatibility
       status: logPassFailed === 'Pass' ? 'pass' : 'fail',
       passFailed: logPassFailed,
+      purpose: logPurpose,
       labReportNo: logLabReportNo || undefined,
       recordedParameters: recordedParams
     };
@@ -831,6 +836,20 @@ export default function WaterTab({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
+                      <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Sampling Purpose *</label>
+                      <select
+                        value={logPurpose}
+                        onChange={(e) => setLogPurpose(e.target.value as any)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none cursor-pointer"
+                        required
+                      >
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Ad-hoc">Ad-hoc</option>
+                        <option value="Pre-use">Pre-use</option>
+                        <option value="Re-test">Re-test</option>
+                      </select>
+                    </div>
+                    <div>
                       <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Report Outcome (Pass / Failed) *</label>
                       <select 
                         value={logPassFailed}
@@ -1182,98 +1201,194 @@ export default function WaterTab({
               )}
             </div>
           ) : (
-            /* --- ASSESSMENT LOGS TABLE FORMAT --- */
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md w-full">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-800 bg-slate-950 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="px-5 py-4 w-32">Test Date</th>
-                      <th className="px-5 py-4">Sampling Point</th>
-                      <th className="px-5 py-4 w-44">Water Source Type</th>
-                      <th className="px-5 py-4 w-40">Lab Report No.</th>
-                      <th className="px-5 py-4">Tester Name</th>
-                      <th className="px-5 py-4">Tested Parameters</th>
-                      <th className="px-5 py-4 text-center w-28">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                    {waterLogs.length > 0 ? (
-                      waterLogs.map((log) => {
-                        const isNewLog = !!log.recordedParameters;
-                        const isPass = log.passFailed ? log.passFailed === 'Pass' : log.status === 'pass';
-
-                        let badgeStyle = 'bg-emerald-950/40 text-emerald-400 border-emerald-900/30';
-                        if (!isPass) {
-                          badgeStyle = 'bg-rose-950/40 text-rose-400 border-rose-900/30 font-bold';
-                        }
-
-                        return (
-                          <tr key={log.id} className="hover:bg-slate-800/10 transition">
-                            <td className="px-5 py-4 font-mono font-medium text-slate-400">{log.testDate}</td>
-                            <td className="px-5 py-4 font-bold text-slate-100">{log.samplePoint}</td>
-                            <td className="px-5 py-4">
-                              <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-slate-950 border border-slate-850 text-cyan-400 font-mono">
-                                {log.waterSourceType || 'N/A'}
-                              </span>
-                            </td>
-                            <td className="px-5 py-4 font-mono font-bold text-slate-400">
-                              {log.labReportNo ? (
-                                <span className="bg-slate-950/80 px-2 py-0.5 rounded border border-slate-850/60 text-indigo-400">
-                                  {log.labReportNo}
-                                </span>
-                              ) : (
-                                <span className="text-slate-600 italic font-normal">No Report No</span>
-                              )}
-                            </td>
-                            <td className="px-5 py-4 text-slate-400">{log.testerName}</td>
-                            <td className="px-5 py-4 max-w-sm">
-                              {!isNewLog ? (
-                                <div className="flex flex-wrap gap-1.5 font-mono text-[10px]">
-                                  <span className="bg-slate-950/60 px-1.5 py-0.5 rounded text-slate-400">pH: {log.pH}</span>
-                                  <span className="bg-slate-950/60 px-1.5 py-0.5 rounded text-slate-400">Cl: {log.chlorine} ppm</span>
-                                  <span className="bg-slate-950/60 px-1.5 py-0.5 rounded text-slate-400">Leg: {log.legionella}</span>
-                                  <span className="bg-slate-950/60 px-1.5 py-0.5 rounded text-slate-400">Temp: {log.temperature}°C</span>
-                                </div>
-                              ) : (
-                                <div className="flex flex-wrap gap-1.5 font-mono text-[10px]">
-                                  {log.recordedParameters && log.recordedParameters.length > 0 ? (
-                                    log.recordedParameters.map(param => (
-                                      <span 
-                                        key={param.name} 
-                                        className={`px-1.5 py-0.5 rounded border ${
-                                          param.isAboveReporting 
-                                            ? 'bg-amber-950/50 border-amber-900/40 text-amber-300 font-bold' 
-                                            : 'bg-slate-950/60 border-slate-850 text-slate-400'
-                                        }`}
-                                      >
-                                        {param.name}: {param.isAboveReporting ? `${param.value} ${param.unit}` : '<Rep'}
-                                      </span>
-                                    ))
-                                  ) : (
-                                    <span className="text-slate-600 italic">No parameters recorded</span>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-5 py-4 text-center">
-                              <span className={`inline-flex px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${badgeStyle}`}>
-                                {log.passFailed ? log.passFailed : (log.status === 'pass' ? 'Pass' : 'Failed')}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={7} className="px-5 py-12 text-center text-slate-500">
-                          <Droplets className="h-8 w-8 mx-auto text-slate-700 mb-2 animate-bounce" />
-                          <p>No historical sanitation logs recorded.</p>
-                        </td>
+            /* --- ASSESSMENT LOGS: MASTER-DETAIL LAYOUT --- */
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+              
+              {/* LEFT: Simplified logs table */}
+              <div className="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 bg-slate-950 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <th className="px-4 py-3 w-28">Sampling Date</th>
+                        <th className="px-4 py-3">Sampling Point</th>
+                        <th className="px-4 py-3 w-36">Water Source Type</th>
+                        <th className="px-4 py-3 text-center w-20">Status</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                      {waterLogs.length > 0 ? (
+                        waterLogs.map((log) => {
+                          const isPass = log.passFailed ? log.passFailed === 'Pass' : log.status === 'pass';
+                          const isSelected = selectedLogId === log.id;
+                          return (
+                            <tr
+                              key={log.id}
+                              onClick={() => setSelectedLogId(log.id)}
+                              className={`cursor-pointer transition ${
+                                isSelected
+                                  ? 'bg-cyan-950/30 border-l-2 border-l-cyan-500'
+                                  : 'hover:bg-slate-800/20'
+                              }`}
+                            >
+                              <td className="px-4 py-3 font-mono text-slate-400">{log.testDate}</td>
+                              <td className="px-4 py-3 font-semibold text-slate-100">{log.samplePoint}</td>
+                              <td className="px-4 py-3">
+                                <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-950 border border-slate-800 text-cyan-400 font-mono">
+                                  {log.waterSourceType || 'N/A'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase font-bold border ${
+                                  isPass
+                                    ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/30'
+                                    : 'bg-rose-950/40 text-rose-400 border-rose-900/30'
+                                }`}>
+                                  {log.passFailed || (log.status === 'pass' ? 'Pass' : 'Failed')}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-12 text-center text-slate-500">
+                            <Droplets className="h-8 w-8 mx-auto text-slate-700 mb-2 animate-bounce" />
+                            <p>No historical sanitation logs recorded.</p>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* RIGHT: Detail panel for selected log */}
+              <div className="lg:col-span-2">
+                {selectedLogId ? (() => {
+                  const log = waterLogs.find(l => l.id === selectedLogId);
+                  if (!log) return <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 text-slate-500 text-xs">Log not found.</div>;
+                  const isPass = log.passFailed ? log.passFailed === 'Pass' : log.status === 'pass';
+                  const isNewLog = !!log.recordedParameters;
+                  return (
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 sticky top-4">
+                      {/* Header */}
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-100 tracking-wider flex items-center gap-1.5">
+                            <FileText className="h-4 w-4 text-cyan-400" />
+                            Sample Details
+                          </h3>
+                          <p className="text-[10px] text-slate-500 mt-0.5 font-mono">ID: {log.id}</p>
+                        </div>
+                        <button onClick={() => setSelectedLogId(null)} className="text-slate-500 hover:text-slate-300 p-1">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {/* Status badge */}
+                      <div className="flex items-center gap-3">
+                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs uppercase font-bold border ${
+                          isPass
+                            ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/30'
+                            : 'bg-rose-950/40 text-rose-400 border-rose-900/30'
+                        }`}>
+                          {log.passFailed || (log.status === 'pass' ? 'Pass' : 'Failed')}
+                        </span>
+                        {log.purpose && (
+                          <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-slate-950 border border-slate-800 text-slate-400">
+                            {log.purpose}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Key fields */}
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <span className="block text-[10px] text-slate-500 uppercase font-bold">Sampling Date</span>
+                          <span className="font-mono text-slate-200">{log.testDate}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-slate-500 uppercase font-bold">Water Source Type</span>
+                          <span className="font-mono text-cyan-400">{log.waterSourceType || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-slate-500 uppercase font-bold">Sampling Point</span>
+                          <span className="font-semibold text-slate-100">{log.samplePoint}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-slate-500 uppercase font-bold">Lab Report No.</span>
+                          {log.labReportNo ? (
+                            <span className="font-mono bg-slate-950/80 px-2 py-0.5 rounded border border-slate-800 text-indigo-400">{log.labReportNo}</span>
+                          ) : (
+                            <span className="text-slate-600 italic">No Report No</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-slate-500 uppercase font-bold">Tester Name</span>
+                          <span className="text-slate-200">{log.testerName}</span>
+                        </div>
+                      </div>
+
+                      {/* Parameters */}
+                      <div className="border-t border-slate-800 pt-3">
+                        <span className="block text-[10px] text-slate-500 uppercase font-bold mb-2">Tested Parameters</span>
+                        {!isNewLog ? (
+                          <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
+                            <div className="bg-slate-950/60 p-2 rounded border border-slate-800">
+                              <span className="text-slate-500 block text-[9px]">pH</span>
+                              <span className="text-slate-200 font-bold">{log.pH}</span>
+                            </div>
+                            <div className="bg-slate-950/60 p-2 rounded border border-slate-800">
+                              <span className="text-slate-500 block text-[9px]">Chlorine</span>
+                              <span className="text-slate-200 font-bold">{log.chlorine} ppm</span>
+                            </div>
+                            <div className="bg-slate-950/60 p-2 rounded border border-slate-800">
+                              <span className="text-slate-500 block text-[9px]">Legionella</span>
+                              <span className="text-slate-200 font-bold">{log.legionella}</span>
+                            </div>
+                            <div className="bg-slate-950/60 p-2 rounded border border-slate-800">
+                              <span className="text-slate-500 block text-[9px]">Temperature</span>
+                              <span className="text-slate-200 font-bold">{log.temperature}°C</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {log.recordedParameters && log.recordedParameters.length > 0 ? (
+                              log.recordedParameters.map(param => (
+                                <div
+                                  key={param.name}
+                                  className={`flex items-center justify-between p-2 rounded border text-xs ${
+                                    param.isAboveReporting
+                                      ? 'bg-amber-950/30 border-amber-900/30'
+                                      : 'bg-slate-950/60 border-slate-800'
+                                  }`}
+                                >
+                                  <span className="font-semibold text-slate-200">{param.name}</span>
+                                  <div className="flex items-center gap-2 font-mono">
+                                    {param.isAboveReporting ? (
+                                      <span className="text-amber-400 font-bold">{param.value} {param.unit}</span>
+                                    ) : (
+                                      <span className="text-slate-500">&lt; {param.reportingLevel} {param.unit}</span>
+                                    )}
+                                    <span className="text-[9px] text-slate-600">ref: {param.referenceLevel}</span>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-slate-600 italic text-xs">No parameters recorded</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })() : (
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
+                    <ClipboardList className="h-8 w-8 mx-auto text-slate-700 mb-2" />
+                    <p className="text-xs text-slate-500">Select a sampling record to view details</p>
+                  </div>
+                )}
               </div>
             </div>
           )}

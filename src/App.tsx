@@ -496,6 +496,13 @@ export default function App() {
     saveState({ ieqParameters: nextParams, auditLogs: nextLogs });
   };
 
+  const handleUpdateIeqParameter = (updatedParam: IeqParameter, logDetails: string) => {
+    const nextParams = ieqParameters.map(p => p.id === updatedParam.id ? updatedParam : p);
+    setIeqParameters(nextParams);
+    const nextLogs = addAuditLog('Updated IEQ Parameter', logDetails, 'IEQ');
+    saveState({ ieqParameters: nextParams, auditLogs: nextLogs });
+  };
+
   const handleDeleteIeqParameter = (paramId: string, logDetails: string) => {
     const nextParams = ieqParameters.filter(p => p.id !== paramId);
     setIeqParameters(nextParams);
@@ -921,6 +928,7 @@ export default function App() {
               onAddSample={handleAddIeqSample}
               onUpdateSample={handleUpdateIeqSample}
               onAddParameter={handleAddIeqParameter}
+              onUpdateParameter={handleUpdateIeqParameter}
               onDeleteParameter={handleDeleteIeqParameter}
             />
           )}
