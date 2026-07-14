@@ -208,6 +208,84 @@ export default function WaterTab({
   // --- SELECTED LOG FOR DETAIL PANEL ---
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
 
+  // --- SAMPLING PERIOD FILTER ---
+  const [filterYear, setFilterYear] = useState<string>('');
+  const [filterMonth, setFilterMonth] = useState<string>('');
+
+  // Compute filtered logs based on selected period
+  const filteredLogs = React.useMemo(() => {
+    return waterLogs.filter(l => {
+      if (filterYear && !l.testDate?.startsWith(filterYear)) return false;
+      if (filterMonth && l.testDate?.slice(5, 7) !== filterMonth) return false;
+      return true;
+    });
+  }, [waterLogs, filterYear, filterMonth]);
+
+  // Build display list: latest sampling instance per point, merged with actual logs
+  const displayLogs = React.useMemo(() => {
+    // For each sampling point, find the latest matching log
+    const pointLatestMap = new Map<string, WaterLog>();
+    const matchedLogIds = new Set<string>();
+
+    samplingPoints.forEach(point => {
+      const logsForPoint = waterLogs
+        .filter(l => l.samplePoint === point.name)
+        .sort((a, b) => (b.testDate || '').localeCompare(a.testDate || ''));
+      if (logsForPoint.length > 0) {
+        pointLatestMap.set(point.id, logsForPoint[0]);
+        matchedLogIds.add(logsForPoint[0].id);
+      }
+    });
+
+    // Build merged list: one row per sampling point (latest log or point metadata)
+    const merged: WaterLog[] = samplingPoints.map(point => {
+      const latestLog = pointLatestMap.get(point.id);
+      if (latestLog) return latestLog;
+      // Synthetic entry for points with no matching log
+      return {
+        id: `sp_synthetic_${point.id}`,
+        samplePoint: point.name,
+        testDate: point.latestSampleDate || '',
+        testerName: '',
+        pH: 0,
+        chlorine: 0,
+        legionella: 'pending' as const,
+        temperature: 0,
+        status: point.latestStatus === 'Failed' ? 'fail' as const : 'pass' as const,
+        waterSourceType: point.type,
+        passFailed: point.latestStatus || 'Pass',
+        _isSynthetic: true
+      } as WaterLog & { _isSynthetic: boolean };
+    });
+
+    // Also include logs that don't match any sampling point (orphan logs)
+    waterLogs.forEach(log => {
+      if (!matchedLogIds.has(log.id)) {
+        merged.push(log);
+      }
+    });
+
+    // Apply period filter
+    const periodFiltered = merged.filter(l => {
+      if (filterYear && !l.testDate?.startsWith(filterYear)) return false;
+      if (filterMonth && l.testDate?.slice(5, 7) !== filterMonth) return false;
+      return true;
+    });
+
+    // Sort by date descending
+    return periodFiltered.sort((a, b) => (b.testDate || '').localeCompare(a.testDate || ''));
+  }, [samplingPoints, waterLogs, filterYear, filterMonth]);
+
+  // Available years/months derived from actual log data
+  const availableYears = React.useMemo(() => 
+    Array.from(new Set(waterLogs.map(l => l.testDate?.slice(0, 4)).filter(Boolean))).sort((a, b) => Number(b) - Number(a)),
+    [waterLogs]
+  );
+  const availableMonths = React.useMemo(() => {
+    const logs = filterYear ? waterLogs.filter(l => l.testDate?.startsWith(filterYear)) : waterLogs;
+    return Array.from(new Set(logs.map(l => l.testDate?.slice(5, 7)).filter(Boolean))).sort();
+  }, [waterLogs, filterYear]);
+
   // Load water configurations on mount
   useEffect(() => {
     try {
@@ -1202,7 +1280,44 @@ export default function WaterTab({
             </div>
           ) : (
             /* --- ASSESSMENT LOGS: MASTER-DETAIL LAYOUT --- */
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <div className="space-y-3">
+
+              {/* Sampling Period Filter Bar */}
+              <div className="flex flex-wrap items-center gap-3 bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-2.5">
+                <div className="flex items-center gap-1.5">
+                  <Filter className="h-3.5 w-3.5 text-cyan-400" />
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Sampling Period:</span>
+                </div>
+                <select
+                  value={filterYear}
+                  onChange={(e) => { setFilterYear(e.target.value); }}
+                  className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded px-2.5 py-1.5 focus:outline-none focus:border-cyan-500 cursor-pointer"
+                >
+                  <option value="">All Years</option>
+                  {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <select
+                  value={filterMonth}
+                  onChange={(e) => setFilterMonth(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded px-2.5 py-1.5 focus:outline-none focus:border-cyan-500 cursor-pointer"
+                >
+                  <option value="">All Months</option>
+                  {availableMonths.map(m => (
+                    <option key={m} value={m}>{['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m)-1] || m}</option>
+                  ))}
+                </select>
+                {(filterYear || filterMonth) && (
+                  <button
+                    onClick={() => { setFilterYear(''); setFilterMonth(''); }}
+                    className="text-[10px] text-cyan-400 hover:text-cyan-300 font-semibold transition"
+                  >
+                    Clear Filter
+                  </button>
+                )}
+                <span className="text-[10px] text-slate-500 ml-auto">{displayLogs.length} sampling instances</span>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
               
               {/* LEFT: Simplified logs table */}
               <div className="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
@@ -1217,8 +1332,8 @@ export default function WaterTab({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                      {waterLogs.length > 0 ? (
-                        waterLogs.map((log) => {
+                      {displayLogs.length > 0 ? (
+                        displayLogs.map((log) => {
                           const isPass = log.passFailed ? log.passFailed === 'Pass' : log.status === 'pass';
                           const isSelected = selectedLogId === log.id;
                           return (
@@ -1254,7 +1369,7 @@ export default function WaterTab({
                         <tr>
                           <td colSpan={4} className="px-4 py-12 text-center text-slate-500">
                             <Droplets className="h-8 w-8 mx-auto text-slate-700 mb-2 animate-bounce" />
-                            <p>No historical sanitation logs recorded.</p>
+                            <p>No sampling instances found.</p>
                           </td>
                         </tr>
                       )}
@@ -1266,10 +1381,54 @@ export default function WaterTab({
               {/* RIGHT: Detail panel for selected log */}
               <div className="lg:col-span-2">
                 {selectedLogId ? (() => {
-                  const log = waterLogs.find(l => l.id === selectedLogId);
+                  const log = displayLogs.find(l => l.id === selectedLogId);
                   if (!log) return <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 text-slate-500 text-xs">Log not found.</div>;
+                  const isSynthetic = log.id.startsWith('sp_synthetic_');
                   const isPass = log.passFailed ? log.passFailed === 'Pass' : log.status === 'pass';
                   const isNewLog = !!log.recordedParameters;
+                  if (isSynthetic) {
+                    // Sampling point with no detailed log record
+                    return (
+                      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 sticky top-4">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                          <div>
+                            <h3 className="text-sm font-bold text-slate-100 tracking-wider flex items-center gap-1.5">
+                              <Droplets className="h-4 w-4 text-cyan-400" />
+                              Sampling Point
+                            </h3>
+                            <p className="text-[10px] text-slate-500 mt-0.5 font-mono">No log record</p>
+                          </div>
+                          <button onClick={() => setSelectedLogId(null)} className="text-slate-500 hover:text-slate-300 p-1">
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs uppercase font-bold border ${
+                            isPass
+                              ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/30'
+                              : 'bg-rose-950/40 text-rose-400 border-rose-900/30'
+                          }`}>
+                            {log.passFailed || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <span className="block text-[10px] text-slate-500 uppercase font-bold">Last Sample Date</span>
+                            <span className="font-mono text-slate-200">{log.testDate || 'No date'}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[10px] text-slate-500 uppercase font-bold">Water Source Type</span>
+                            <span className="font-mono text-cyan-400">{log.waterSourceType || 'N/A'}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="block text-[10px] text-slate-500 uppercase font-bold">Sampling Point</span>
+                            <span className="font-semibold text-slate-100">{log.samplePoint}</span>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-slate-500 italic border-t border-slate-800 pt-3">No detailed parameter data available for this sampling instance.</p>
+                      </div>
+                    );
+                  }
                   return (
                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 sticky top-4">
                       {/* Header */}
@@ -1390,6 +1549,7 @@ export default function WaterTab({
                   </div>
                 )}
               </div>
+            </div>
             </div>
           )}
 
