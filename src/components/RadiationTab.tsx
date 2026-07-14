@@ -38,7 +38,7 @@ import {
 const DEFAULT_RUAS: Rua[] = [
   {
     id: 'rua_1',
-    spaceID: 'Physics Wing A105',
+    spaceID: 'LSK105',
     type: 'Communal',
     department: 'Physics',
     personInCharge: 'Sarah Jenkins',
@@ -66,7 +66,7 @@ const DEFAULT_RUAS: Rua[] = [
   },
   {
     id: 'rua_2',
-    spaceID: 'Main Science Building302',
+    spaceID: 'UST302',
     type: 'Individual',
     department: 'Chemistry',
     piId: 'pers_elena',

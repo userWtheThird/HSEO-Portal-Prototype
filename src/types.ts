@@ -301,3 +301,30 @@ export interface Rua {
   users?: { id: string; name: string; role: string }[];
 }
 
+export interface Equipment {
+  id: string;
+  name: string;
+  category: string;        // 'Dust Monitor' | 'Noise Dosimeter' | 'Gas Detector' | 'NIR Sensor' | 'Air Sampler' | ...
+  serialNumber: string;
+  manufacturer: string;
+  lastCalibrationDate: string;
+  nextCalibrationDate: string;
+  status: 'Active' | 'Calibration Due' | 'Out for calibration' | 'Out of Service';
+  assignedLocation?: string;
+}
+
+export interface ExposureRecord {
+  id: string;
+  samplingDate: string;
+  locationId: string;
+  spaceID: string;
+  parameterType: string;      // 'Total Dust' | 'PM10' | 'PM2.5' | 'tVOC' | 'Ammonia' | 'Noise' | 'NIR'
+  equipmentId: string;
+  testerId: string;
+  results: { name: string; value: string; unit: string }[];
+  floorPlanRef: string;
+  sampledDuration: string;
+  status: 'Compliant' | 'Exceedance' | 'Pending';
+  followUp: string;
+  notes: string;
+}

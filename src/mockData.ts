@@ -14,7 +14,9 @@ import {
   IeqLog, 
   IeqComplaint,
   IeqParameter,
-  IeqSample 
+  IeqSample,
+  Equipment,
+  ExposureRecord 
 } from './types';
 
 export const SIMULATED_USERS: User[] = [
@@ -504,7 +506,7 @@ export const INITIAL_RADIATION_SOURCES: RadiationSource[] = [
     isotope: 'Americium-241',
     activity: '37 kBq',
     location: 'Physics Lab Vault Cabinet A',
-    spaceID: 'Physics Wing A105',
+    spaceID: 'LSK105',
     lastLeakTest: '2026-05-10',
     nextLeakTest: '2026-11-10',
     status: 'safe',
@@ -523,7 +525,7 @@ export const INITIAL_RADIATION_SOURCES: RadiationSource[] = [
     isotope: 'Cesium-137',
     activity: '185 MBq',
     location: 'Material Testing Wing D',
-    spaceID: 'Main Science Building302',
+    spaceID: 'UST302',
     lastLeakTest: '2026-01-15',
     nextLeakTest: '2026-07-15',
     status: 'due_test',
@@ -542,7 +544,7 @@ export const INITIAL_RADIATION_SOURCES: RadiationSource[] = [
     isotope: 'Californium-252',
     activity: '5.2 MBq',
     location: 'Nuclear Physics Lab Storage B',
-    spaceID: 'Physics Wing A105',
+    spaceID: 'LSK105',
     lastLeakTest: '2025-12-01',
     nextLeakTest: '2026-06-01',
     status: 'alert',
@@ -561,7 +563,7 @@ export const INITIAL_RADIATION_SOURCES: RadiationSource[] = [
     isotope: 'Tritium (H-3)',
     activity: '250 MBq',
     location: 'Nuclear Medicine Suite',
-    spaceID: 'Physics Wing B114',
+    spaceID: 'CYT114',
     status: 'safe',
     custodian: 'Dr. Elena Rostova',
     locationId: 'loc_quantum_optics',
@@ -574,8 +576,8 @@ export const INITIAL_RADIATION_SOURCES: RadiationSource[] = [
     equipmentDescription: 'High-frequency digital diagnostic radiography system',
     licenceNumber: 'RAD-LIC-2026-8842',
     department: 'Physics',
-    location: 'Physics Wing A Rm 105',
-    spaceID: 'Physics Wing A105',
+    location: 'LSK Rm 105',
+    spaceID: 'LSK105',
     xrayTubeSerialNumbers: 'XRAY-TUBE-9921-A, XRAY-TUBE-9921-B',
     custodian: 'Dr. Elena Rostova',
     licenceExpiryDate: '2026-11-30',
@@ -977,4 +979,148 @@ export const INITIAL_IEQ_SAMPLES: IeqSample[] = [
     },
     notes: 'Post-renovation baseline. All clear for occupancy.'
   },
+];
+
+export const INITIAL_EQUIPMENT: Equipment[] = [
+  {
+    id: 'eq_1',
+    name: 'DustTrak DRX 8533',
+    category: 'Dust Monitor',
+    serialNumber: 'DT8533-2024-001',
+    manufacturer: 'TSI Incorporated',
+    lastCalibrationDate: '2026-03-15',
+    nextCalibrationDate: '2027-03-15',
+    status: 'Active',
+    assignedLocation: 'UST'
+  },
+  {
+    id: 'eq_2',
+    name: 'NoisePro DLX Dosimeter',
+    category: 'Noise Dosimeter',
+    serialNumber: 'NPD-2025-042',
+    manufacturer: '3M',
+    lastCalibrationDate: '2026-01-10',
+    nextCalibrationDate: '2026-07-10',
+    status: 'Calibration Due',
+    assignedLocation: ''
+  },
+  {
+    id: 'eq_3',
+    name: 'MultiRAE Lite Gas Detector',
+    category: 'Gas Detector',
+    serialNumber: 'MRL-2024-118',
+    manufacturer: 'RAE Systems',
+    lastCalibrationDate: '2026-05-20',
+    nextCalibrationDate: '2026-11-20',
+    status: 'Active',
+    assignedLocation: 'LSK'
+  },
+  {
+    id: 'eq_4',
+    name: 'MicroNIR OnLine Spectrometer',
+    category: 'NIR Sensor',
+    serialNumber: 'NIR-OL-2025-007',
+    manufacturer: 'VIAVI Solutions',
+    lastCalibrationDate: '2026-04-01',
+    nextCalibrationDate: '2027-04-01',
+    status: 'Active',
+    assignedLocation: ''
+  },
+  {
+    id: 'eq_5',
+    name: 'MiniVol TAS Air Sampler',
+    category: 'Air Sampler',
+    serialNumber: 'MV-TAS-2024-033',
+    manufacturer: 'Airmetrics',
+    lastCalibrationDate: '2025-09-01',
+    nextCalibrationDate: '2026-03-01',
+    status: 'Out for calibration',
+    assignedLocation: ''
+  },
+  {
+    id: 'eq_6',
+    name: 'ppbRAE 3000 VOC Meter',
+    category: 'Gas Detector',
+    serialNumber: 'PPB3K-2025-089',
+    manufacturer: 'Honeywell',
+    lastCalibrationDate: '2026-06-12',
+    nextCalibrationDate: '2026-12-12',
+    status: 'Active',
+    assignedLocation: 'CYT'
+  }
+];
+
+export const INITIAL_EXPOSURE_RECORDS: ExposureRecord[] = [
+  {
+    id: 'exp_1',
+    samplingDate: '2026-07-10',
+    locationId: 'loc_chem_prep',
+    spaceID: 'USTB105',
+    parameterType: 'tVOC',
+    equipmentId: 'eq_6',
+    testerId: 'pers_nisha',
+    results: [
+      { name: 'tVOC', value: '185', unit: 'ppb' },
+      { name: 'Benzene', value: '2.1', unit: 'ppb' }
+    ],
+    floorPlanRef: 'USTB105-2026Jul10',
+    sampledDuration: '8 hours',
+    status: 'Compliant',
+    followUp: '',
+    notes: 'Routine quarterly monitoring. All within limits.'
+  },
+  {
+    id: 'exp_2',
+    samplingDate: '2026-07-08',
+    locationId: 'loc_chem_storage',
+    spaceID: 'CML108',
+    parameterType: 'Ammonia',
+    equipmentId: 'eq_3',
+    testerId: 'pers_nisha',
+    results: [
+      { name: 'Ammonia (NH3)', value: '38', unit: 'ppm' },
+      { name: 'TWA', value: '25', unit: 'ppm' }
+    ],
+    floorPlanRef: 'CML108-2026Jul08',
+    sampledDuration: '4 hours',
+    status: 'Exceedance',
+    followUp: 'Ventilation upgrade required. Re-test after HVAC modification.',
+    notes: 'Ammonia levels above PEL during chemical transfer operation.'
+  },
+  {
+    id: 'exp_3',
+    samplingDate: '2026-07-05',
+    locationId: 'loc_boiler_room',
+    spaceID: 'LSKBasement B-10',
+    parameterType: 'Noise',
+    equipmentId: 'eq_2',
+    testerId: 'pers_james',
+    results: [
+      { name: 'Leq (8hr)', value: '87', unit: 'dBA' },
+      { name: 'Peak', value: '112', unit: 'dBC' }
+    ],
+    floorPlanRef: 'LSKBasement B-10-2026Jul05',
+    sampledDuration: '8 hours',
+    status: 'Exceedance',
+    followUp: 'Hearing protection mandatory. Engineering controls review scheduled.',
+    notes: 'Boiler pump noise exceeds action level.'
+  },
+  {
+    id: 'exp_4',
+    samplingDate: '2026-07-02',
+    locationId: 'loc_office_space',
+    spaceID: 'USTFloor 1 Open Area',
+    parameterType: 'PM2.5',
+    equipmentId: 'eq_1',
+    testerId: 'pers_nisha',
+    results: [
+      { name: 'PM2.5', value: '12', unit: 'ug/m3' },
+      { name: 'PM10', value: '28', unit: 'ug/m3' }
+    ],
+    floorPlanRef: 'USTFloor 1 Open Area-2026Jul02',
+    sampledDuration: '24 hours',
+    status: 'Compliant',
+    followUp: '',
+    notes: 'Annual baseline. Good indoor air quality.'
+  }
 ];
