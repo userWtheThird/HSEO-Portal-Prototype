@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   MapPin, 
   User, 
   Users, 
   Phone, 
   Mail, 
-  Building, 
+  Building as BuildingIcon, 
   Plus, 
   Search, 
   Shield, 
@@ -21,11 +21,14 @@ import {
   ClipboardCheck,
   X,
   FileText,
-  Edit2
+  Edit2,
+  Download,
+  Upload
 } from 'lucide-react';
 import { 
   Person, 
   Location, 
+  Building,
   User as AuthUser,
   Inspection,
   RadiationSource,
@@ -41,6 +44,7 @@ interface LocationTabProps {
   currentUser: AuthUser;
   locations: Location[];
   persons: Person[];
+  buildings: Building[];
   inspections: Inspection[];
   radiationSources: RadiationSource[];
   laserDevices: LaserDevice[];
@@ -52,6 +56,9 @@ interface LocationTabProps {
   onAddLocation: (loc: Location) => void;
   onAddPerson: (pers: Person) => void;
   onUpdateLocation: (loc: Location) => void;
+  onAddBuilding: (building: Building, logDetails: string) => void;
+  onUpdateBuilding: (building: Building, logDetails: string) => void;
+  onDeleteBuilding: (buildingId: string, logDetails: string) => void;
   onNavigateToPerson: (personId: string) => void;
 }
 
@@ -59,6 +66,7 @@ export default function LocationTab({
   currentUser,
   locations,
   persons,
+  buildings,
   inspections,
   radiationSources,
   laserDevices,
@@ -70,9 +78,17 @@ export default function LocationTab({
   onAddLocation,
   onAddPerson,
   onUpdateLocation,
+  onAddBuilding,
+  onUpdateBuilding,
+  onDeleteBuilding,
   onNavigateToPerson
 }: LocationTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const bldFileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Sub-tab toggle: locations or buildings
+  const [locSubTab, setLocSubTab] = useState<'locations' | 'buildings'>('locations');
   
   // Selection details panel states
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
@@ -93,7 +109,7 @@ export default function LocationTab({
   const [newLocNature, setNewLocNature] = useState('');
   const [newLocPI, setNewLocPI] = useState('');
   const [newLocDept, setNewLocDept] = useState('');
-  const [newLocContacts, setNewLocContacts] = useState<string[]>([]);
+  const [newLocContacts, setNewLocContacts] = useState<string>('');
   const [newLocStatus, setNewLocStatus] = useState<'Active' | 'Inactive/Renovation' | 'Decommissioned'>('Active');
 
   // Editing location states
@@ -104,8 +120,17 @@ export default function LocationTab({
   const [editLocNature, setEditLocNature] = useState('');
   const [editLocDept, setEditLocDept] = useState('');
   const [editLocPI, setEditLocPI] = useState('');
-  const [editLocContacts, setEditLocContacts] = useState<string[]>([]);
+  const [editLocContacts, setEditLocContacts] = useState<string>('');
   const [editLocStatus, setEditLocStatus] = useState<'Active' | 'Inactive/Renovation' | 'Decommissioned'>('Active');
+
+  // Buildings sub-tab states
+  const [showAddBuilding, setShowAddBuilding] = useState(false);
+  const [newBldCode, setNewBldCode] = useState('');
+  const [newBldName, setNewBldName] = useState('');
+  const [editingBuilding, setEditingBuilding] = useState<Building | null>(null);
+  const [editBldCode, setEditBldCode] = useState('');
+  const [editBldName, setEditBldName] = useState('');
+  const [bldSearchQuery, setBldSearchQuery] = useState('');
 
   // Auto-generate SpaceID for creation form when Building or Room changes
   useEffect(() => {
@@ -113,6 +138,159 @@ export default function LocationTab({
       setNewLocSpaceID(`${newLocBuilding}${newLocRoom}`.replace(/\s+/g, ''));
     }
   }, [newLocBuilding, newLocRoom]);
+
+  // Download locations as CSV
+  const handleDownloadCSV = () => {
+    const headers = ['id', 'building', 'roomNumber', 'spaceID', 'roomNature', 'department', 'piIds', 'piDelegateIds', 'status'];
+    const rows = locations.map(loc => [
+      loc.id,
+      loc.building,
+      loc.roomNumber,
+      loc.spaceID,
+      loc.roomNature,
+      loc.department,
+      loc.piIds.join(';'),
+      loc.piDelegateIds.join(';'),
+      loc.status
+    ]);
+    const csv = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `locations_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Upload CSV to replace locations
+  const handleUploadCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string;
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { alert('CSV file is empty or invalid.'); return; }
+      
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      let added = 0, updated = 0, errors = 0;
+      
+      for (let i = 1; i < lines.length; i++) {
+        try {
+          const values = lines[i].match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').replace(/""/g, '"')) || [];
+          const row: Record<string, string> = {};
+          headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
+          
+          const loc: Location = {
+            id: row.id || `loc_${Date.now()}_${i}`,
+            building: row.building || '',
+            roomNumber: row.roomNumber || '',
+            spaceID: row.spaceID || '',
+            roomNature: row.roomNature || '',
+            department: row.department || '',
+            piIds: row.piIds ? row.piIds.split(';').filter(Boolean) : [],
+            piDelegateIds: row.piDelegateIds ? row.piDelegateIds.split(';').filter(Boolean) : [],
+            status: (row.status as Location['status']) || 'Active'
+          };
+          
+          const existing = locations.find(l => l.id === loc.id);
+          if (existing) {
+            onUpdateLocation(loc);
+            updated++;
+          } else {
+            onAddLocation(loc);
+            added++;
+          }
+        } catch (err) {
+          errors++;
+        }
+      }
+      
+      alert(`CSV Import Complete\n\nAdded: ${added}\nUpdated: ${updated}\nErrors: ${errors}`);
+    };
+    reader.readAsText(file);
+    // Reset file input so same file can be re-uploaded
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Building CSV download
+  const handleDownloadBuildingCSV = () => {
+    const headers = ['id', 'code', 'name'];
+    const rows = buildings.map(b => [b.id, b.code, b.name]);
+    const csv = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `buildings_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Building CSV upload
+  const handleUploadBuildingCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string;
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { alert('CSV file is empty or invalid.'); return; }
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      let added = 0, updated = 0, errors = 0;
+      for (let i = 1; i < lines.length; i++) {
+        try {
+          const values = lines[i].match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').replace(/""/g, '"')) || [];
+          const row: Record<string, string> = {};
+          headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
+          const bld: Building = { id: row.id || `bld_${Date.now()}_${i}`, code: row.code || '', name: row.name || '' };
+          const existing = buildings.find(b => b.id === bld.id);
+          if (existing) { onUpdateBuilding(bld, `Updated building ${bld.code} via CSV`); updated++; }
+          else { onAddBuilding(bld, `Added building ${bld.code} via CSV`); added++; }
+        } catch { errors++; }
+      }
+      alert(`Building CSV Import\n\nAdded: ${added}\nUpdated: ${updated}\nErrors: ${errors}`);
+    };
+    reader.readAsText(file);
+    if (bldFileInputRef.current) bldFileInputRef.current.value = '';
+  };
+
+  // Add building submit
+  const handleAddBuildingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBldCode.trim() || !newBldName.trim()) { alert('Code and Name are required.'); return; }
+    if (buildings.some(b => b.code === newBldCode.trim())) { alert('A building with this code already exists.'); return; }
+    const newBld: Building = { id: `bld_${Date.now()}`, code: newBldCode.trim(), name: newBldName.trim() };
+    onAddBuilding(newBld, `Added building "${newBld.code}" - ${newBld.name}`);
+    setNewBldCode(''); setNewBldName(''); setShowAddBuilding(false);
+  };
+
+  // Update building submit
+  const handleUpdateBuildingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBuilding) return;
+    if (!editBldCode.trim() || !editBldName.trim()) { alert('Code and Name are required.'); return; }
+    const updated: Building = { ...editingBuilding, code: editBldCode.trim(), name: editBldName.trim() };
+    onUpdateBuilding(updated, `Updated building "${updated.code}" - ${updated.name}`);
+    setEditingBuilding(null);
+  };
+
+  // Delete building
+  const handleDeleteBuildingClick = (bld: Building) => {
+    const linkedCount = locations.filter(l => l.building === bld.code).length;
+    if (linkedCount > 0) {
+      alert(`Cannot delete "${bld.code}": ${linkedCount} location(s) still reference this building. Update or remove those locations first.`);
+      return;
+    }
+    if (confirm(`Delete building "${bld.code} - ${bld.name}"?`)) {
+      onDeleteBuilding(bld.id, `Deleted building "${bld.code}" - ${bld.name}`);
+    }
+  };
 
   // Handle Location submit
   const handleCreateLocation = (e: React.FormEvent) => {
@@ -129,7 +307,7 @@ export default function LocationTab({
       roomNature: newLocNature,
       piIds: newLocPI ? [newLocPI] : [],
       department: newLocDept,
-      contactPersonIds: newLocContacts,
+      piDelegateIds: newLocContacts ? [newLocContacts] : [],
       status: newLocStatus
     };
     onAddLocation(newLoc);
@@ -141,7 +319,7 @@ export default function LocationTab({
     setNewLocNature('');
     setNewLocPI('');
     setNewLocDept('');
-    setNewLocContacts([]);
+    setNewLocContacts('');
     setNewLocStatus('Active');
     setShowAddLoc(false);
   };
@@ -162,7 +340,7 @@ export default function LocationTab({
       roomNature: editLocNature,
       department: editLocDept,
       piIds: [editLocPI],
-      contactPersonIds: editLocContacts,
+      piDelegateIds: editLocContacts ? [editLocContacts] : [],
       status: editLocStatus
     };
     onUpdateLocation(updated);
@@ -177,7 +355,7 @@ export default function LocationTab({
     setEditLocNature(loc.roomNature);
     setEditLocDept(loc.department);
     setEditLocPI(loc.piIds[0] || '');
-    setEditLocContacts(loc.contactPersonIds || []);
+    setEditLocContacts(loc.piDelegateIds?.[0] || '');
     setEditLocStatus(loc.status || 'Active');
     setIsEditingRoom(true);
   };
@@ -210,7 +388,7 @@ export default function LocationTab({
     .filter(loc => {
       const query = searchQuery.toLowerCase();
       const piName = loc.piIds.map(getPersonName).join(', ').toLowerCase();
-      const contactNames = loc.contactPersonIds.map(getPersonName).join(' ').toLowerCase();
+      const contactNames = loc.piDelegateIds.map(getPersonName).join(' ').toLowerCase();
       
       const matchesSearch = (
         loc.building.toLowerCase().includes(query) ||
@@ -263,6 +441,29 @@ export default function LocationTab({
           </div>
         </div>
 
+        {/* Sub-tab Toggle */}
+        <div className="mt-4 flex bg-slate-950 p-1 rounded-lg border border-slate-800 w-fit">
+          <button
+            onClick={() => setLocSubTab('locations')}
+            className={`px-4 py-1.5 rounded-md text-xs font-semibold transition ${
+              locSubTab === 'locations' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Locations
+          </button>
+          <button
+            onClick={() => setLocSubTab('buildings')}
+            className={`px-4 py-1.5 rounded-md text-xs font-semibold transition ${
+              locSubTab === 'buildings' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Buildings
+          </button>
+        </div>
+      </div>
+
+      {/* LOCATIONS SUB-TAB CONTENT */}
+      {locSubTab === 'locations' && (<>
         {/* SEARCH AND FILTER BAR (Compact Size) */}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 bg-slate-950/40 p-3 rounded-lg border border-slate-800/80">
           
@@ -341,6 +542,29 @@ export default function LocationTab({
             </div>
           </div>
 
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadCSV}
+              className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded-lg font-semibold transition shrink-0"
+            >
+              <Download className="h-3.5 w-3.5 text-emerald-400" />
+              Download CSV
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded-lg font-semibold transition shrink-0"
+            >
+              <Upload className="h-3.5 w-3.5 text-amber-400" />
+              Upload CSV
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleUploadCSV}
+              className="hidden"
+            />
+          </div>
           <button
             onClick={() => {
               setShowAddLoc(true);
@@ -352,7 +576,6 @@ export default function LocationTab({
             Register Space
           </button>
         </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         
@@ -372,14 +595,17 @@ export default function LocationTab({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Building *</label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={newLocBuilding}
                     onChange={(e) => setNewLocBuilding(e.target.value)}
-                    placeholder="e.g. Science Block A"
-                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
-                  />
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="">Select building...</option>
+                    {buildings.map(b => (
+                      <option key={b.id} value={b.code}>{b.code} - {b.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Room Number *</label>
@@ -452,26 +678,17 @@ export default function LocationTab({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">HSEO Contacts (Delegates/Contact Persons)</label>
-                  <div className="max-h-24 overflow-y-auto border border-slate-800 rounded p-2 space-y-1.5 bg-slate-950 custom-scrollbar">
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Contact Person (PI's Delegate)</label>
+                  <select
+                    value={newLocContacts}
+                    onChange={(e) => setNewLocContacts(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="">-- Select Delegate --</option>
                     {persons.filter(p => !newLocDept || p.department.toLowerCase().trim() === newLocDept.toLowerCase().trim()).map(pers => (
-                      <label key={pers.id} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={newLocContacts.includes(pers.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setNewLocContacts([...newLocContacts, pers.id]);
-                            } else {
-                              setNewLocContacts(newLocContacts.filter(id => id !== pers.id));
-                            }
-                          }}
-                          className="rounded border-slate-800 bg-slate-900 text-indigo-600 focus:ring-0"
-                        />
-                        <span>{pers.name} <span className="text-[9px] text-slate-500">({pers.role})</span></span>
-                      </label>
+                      <option key={pers.id} value={pers.id}>{pers.name} ({pers.role})</option>
                     ))}
-                  </div>
+                  </select>
                 </div>
               </div>
 
@@ -646,13 +863,17 @@ export default function LocationTab({
                     </div>
                     <div>
                       <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Building *</label>
-                      <input
-                        type="text"
+                      <select
                         required
                         value={editLocBuilding}
                         onChange={(e) => setEditLocBuilding(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
-                      />
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none cursor-pointer"
+                      >
+                        <option value="">Select building...</option>
+                        {buildings.map(b => (
+                          <option key={b.id} value={b.code}>{b.code} - {b.name}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Room Number *</label>
@@ -711,26 +932,17 @@ export default function LocationTab({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">HSEO Contacts (Delegates / Emergency)</label>
-                      <div className="max-h-24 overflow-y-auto border border-slate-800 rounded p-2 space-y-1.5 bg-slate-950 custom-scrollbar">
+                      <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Contact Person (PI's Delegate)</label>
+                      <select
+                        value={editLocContacts}
+                        onChange={(e) => setEditLocContacts(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none cursor-pointer"
+                      >
+                        <option value="">-- Select Delegate --</option>
                         {persons.filter(p => !editLocDept || p.department.toLowerCase().trim() === editLocDept.toLowerCase().trim()).map(pers => (
-                          <label key={pers.id} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={editLocContacts.includes(pers.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setEditLocContacts([...editLocContacts, pers.id]);
-                                } else {
-                                  setEditLocContacts(editLocContacts.filter(id => id !== pers.id));
-                                }
-                              }}
-                              className="rounded border-slate-800 bg-slate-900 text-indigo-600 focus:ring-0"
-                            />
-                            <span>{pers.name} <span className="text-[9px] text-slate-500">({pers.role})</span></span>
-                          </label>
+                          <option key={pers.id} value={pers.id}>{pers.name} ({pers.role})</option>
                         ))}
-                      </div>
+                      </select>
                     </div>
                   </div>
 
@@ -813,12 +1025,12 @@ export default function LocationTab({
                     </span>
                   </div>
 
-                  {/* Contact Person(s) / Delegate(s) underneath PI */}
+                  {/* Contact Person (PI's Delegate) */}
                   <div className="space-y-1.5 mt-2 border-t border-slate-800/50 pt-2.5">
-                    <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider">Contact Person(s) / Delegate(s):</span>
-                    {selectedLoc.contactPersonIds.length > 0 ? (
+                    <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider">Contact Person (PI's Delegate):</span>
+                    {selectedLoc.piDelegateIds.length > 0 ? (
                       <div className="grid grid-cols-1 gap-1 pl-1">
-                        {selectedLoc.contactPersonIds.map(id => {
+                        {selectedLoc.piDelegateIds.map(id => {
                           const person = persons.find(p => p.id === id);
                           if (!person) return null;
                           return (
@@ -839,17 +1051,17 @@ export default function LocationTab({
                         })}
                       </div>
                     ) : (
-                      <span className="text-slate-500 italic block text-[10px] pl-1">No contact persons or delegates assigned</span>
+                      <span className="text-slate-500 italic block text-[10px] pl-1">No contact person assigned</span>
                     )}
                   </div>
 
-                  {/* HSEO contacts */}
+                  {/* HSEO Contact - derived from Field Team Assignment */}
                   <div className="space-y-1.5 mt-2 border-t border-slate-800/50 pt-2.5">
-                    <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider">HSEO Contacts:</span>
+                    <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider">HSEO Contact (Field Team):</span>
                     <div className="grid grid-cols-1 gap-1 pl-1">
                       {persons.filter(p => 
-                        (p.role === 'HSEO Management' || p.role === 'HSEO management' || p.role === 'Officer') && 
-                        p.department.toLowerCase().trim() === selectedLoc.department.toLowerCase().trim()
+                        (p.role === 'Field Team Member' || p.role === 'FTM') && 
+                        p.assignedDepartments?.includes(selectedLoc.department)
                       ).map(officer => (
                         <div 
                           key={officer.id} 
@@ -866,10 +1078,10 @@ export default function LocationTab({
                         </div>
                       ))}
                       {persons.filter(p => 
-                        (p.role === 'HSEO Management' || p.role === 'HSEO management' || p.role === 'Officer') && 
-                        p.department.toLowerCase().trim() === selectedLoc.department.toLowerCase().trim()
+                        (p.role === 'Field Team Member' || p.role === 'FTM') && 
+                        p.assignedDepartments?.includes(selectedLoc.department)
                       ).length === 0 && (
-                        <span className="text-slate-500 italic block text-[10px] pl-1">No HSEO department contacts listed for this specific department</span>
+                        <span className="text-slate-500 italic block text-[10px] pl-1">No FTM assigned to this department</span>
                       )}
                     </div>
                   </div>
@@ -983,7 +1195,7 @@ export default function LocationTab({
           ) : (
             /* DEFAULT EMPTY PANEL STATE */
             <div className="bg-slate-900 border border-slate-800 border-dashed rounded-xl p-8 text-center text-slate-500 sticky top-4">
-              <Building className="h-10 w-10 mx-auto text-slate-700 mb-3" />
+              <BuildingIcon className="h-10 w-10 mx-auto text-slate-700 mb-3" />
               <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Spatial Association Panel</h3>
               <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
                 Click on any Room in the Registry table to inspect spatial specifications, emergency HSEO contact lists, delegate rosters, and dynamic links to safety program telemetry.
@@ -994,6 +1206,137 @@ export default function LocationTab({
         </div>
 
       </div>
+      </>)}
+
+      {/* BUILDINGS SUB-TAB CONTENT */}
+      {locSubTab === 'buildings' && (
+        <div className="space-y-4">
+          {/* Action bar */}
+          <div className="flex flex-wrap items-center gap-3 bg-slate-950/40 p-3 rounded-lg border border-slate-800/80">
+            <div className="relative w-48">
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
+              <input
+                type="text"
+                value={bldSearchQuery}
+                onChange={(e) => setBldSearchQuery(e.target.value)}
+                placeholder="Search buildings..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-slate-200"
+              />
+            </div>
+            <div className="flex-1" />
+            <div className="flex items-center gap-2">
+              <button onClick={handleDownloadBuildingCSV} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded-lg font-semibold transition">
+                <Download className="h-3.5 w-3.5 text-emerald-400" /> CSV
+              </button>
+              <button onClick={() => bldFileInputRef.current?.click()} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded-lg font-semibold transition">
+                <Upload className="h-3.5 w-3.5 text-amber-400" /> CSV
+              </button>
+              <input ref={bldFileInputRef} type="file" accept=".csv" onChange={handleUploadBuildingCSV} className="hidden" />
+            </div>
+            <button onClick={() => setShowAddBuilding(true)} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-1.5 rounded-lg font-semibold transition">
+              <Plus className="h-4 w-4" /> Add Building
+            </button>
+          </div>
+
+          {/* Add Building Form */}
+          {showAddBuilding && (
+            <form onSubmit={handleAddBuildingSubmit} className="bg-slate-900 border-2 border-indigo-500/30 rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">Add New Building</span>
+                <button type="button" onClick={() => setShowAddBuilding(false)} className="text-slate-500 hover:text-slate-300"><X className="h-4 w-4" /></button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Code *</label>
+                  <input type="text" value={newBldCode} onChange={(e) => setNewBldCode(e.target.value)} placeholder="e.g. UST, PWB" className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Full Name *</label>
+                  <input type="text" value={newBldName} onChange={(e) => setNewBldName(e.target.value)} placeholder="e.g. University Science Tower" className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                </div>
+              </div>
+              <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition">Save Building</button>
+            </form>
+          )}
+
+          {/* Edit Building Modal */}
+          {editingBuilding && (
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setEditingBuilding(null)}>
+              <div className="bg-slate-900 border border-amber-600/30 rounded-xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                  <h3 className="text-sm font-bold text-slate-100">Edit Building</h3>
+                  <button onClick={() => setEditingBuilding(null)} className="text-slate-500 hover:text-slate-300"><X className="h-4 w-4" /></button>
+                </div>
+                <form onSubmit={handleUpdateBuildingSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Code *</label>
+                    <input type="text" value={editBldCode} onChange={(e) => setEditBldCode(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Full Name *</label>
+                    <input type="text" value={editBldName} onChange={(e) => setEditBldName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none" />
+                  </div>
+                  <button type="submit" className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition">Update Building</button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Buildings Table */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <table className="w-full text-left">
+              <thead className="bg-slate-950/60 border-b border-slate-800 text-[10px] text-slate-400 uppercase tracking-wider">
+                <tr>
+                  <th className="px-4 py-3">Code</th>
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3 text-center">Linked Locations</th>
+                  <th className="px-4 py-3 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 text-xs text-slate-300">
+                {buildings.filter(b => !bldSearchQuery || b.code.toLowerCase().includes(bldSearchQuery.toLowerCase()) || b.name.toLowerCase().includes(bldSearchQuery.toLowerCase())).map(bld => {
+                  const linkedCount = locations.filter(l => l.building === bld.code).length;
+                  return (
+                    <tr key={bld.id} className="hover:bg-slate-800/20 transition">
+                      <td className="px-4 py-3 font-mono font-bold text-indigo-400">{bld.code}</td>
+                      <td className="px-4 py-3 text-slate-200">{bld.name}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold border ${linkedCount > 0 ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/30' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>
+                          {linkedCount}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => { setEditingBuilding(bld); setEditBldCode(bld.code); setEditBldName(bld.name); }}
+                            className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-amber-600/20 hover:text-amber-400 text-slate-500 transition border border-slate-700/50 hover:border-amber-600/40"
+                            title="Edit building"
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBuildingClick(bld)}
+                            className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-rose-600/20 hover:text-rose-400 text-slate-500 transition border border-slate-700/50 hover:border-rose-600/40"
+                            title="Delete building"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {buildings.length === 0 && (
+                  <tr><td colSpan={4} className="px-4 py-12 text-center text-slate-500">
+                    <BuildingIcon className="h-8 w-8 mx-auto text-slate-700 mb-2" />
+                    <p className="text-xs">No buildings registered yet.</p>
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
     </div>
   );

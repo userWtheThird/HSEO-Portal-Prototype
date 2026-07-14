@@ -2,6 +2,7 @@ import {
   User, 
   Person,
   Location,
+  Building,
   AuditLog, 
   Inspection, 
   RadiationSource, 
@@ -246,6 +247,14 @@ export const SIMULATED_PERSONS: Person[] = [
 ];
 
 // Locations Registry
+export const INITIAL_BUILDINGS: Building[] = [
+  { id: 'bld_1', code: 'UST', name: 'Academic Building' },
+  { id: 'bld_2', code: 'CYT', name: 'Cheng Yu Tung Building' },
+  { id: 'bld_3', code: 'LSK', name: 'Lee Shau Kee Business Building' },
+  { id: 'bld_4', code: 'IB', name: 'Martin Ka Shing Lee Innovation Building' },
+  { id: 'bld_5', code: 'CML', name: 'Costal Marine Laboratory' }
+];
+
 export const SIMULATED_LOCATIONS: Location[] = [
   {
     id: 'loc_chem_prep',
@@ -255,7 +264,7 @@ export const SIMULATED_LOCATIONS: Location[] = [
     roomNature: 'Chemical Prep Lab',
     piIds: ['pers_elena'],
     department: 'CHEM',
-    contactPersonIds: ['pers_james', 'pers_chem1'],
+    piDelegateIds: ['pers_james', 'pers_chem1'],
     status: 'Active'
   },
   {
@@ -266,73 +275,73 @@ export const SIMULATED_LOCATIONS: Location[] = [
     roomNature: 'Nuclear Physics Lab Storage B',
     piIds: ['pers_phys_1'],
     department: 'Physics',
-    contactPersonIds: ['pers_phys_2'],
+    piDelegateIds: ['pers_phys_2'],
     status: 'Active'
   },
   {
     id: 'loc_quantum_optics',
-    building: 'Physics Wing B',
-    roomNumber: '114',
-    spaceID: 'Physics Wing B114',
+    building: 'UST',
+    roomNumber: 'B114',
+    spaceID: 'USTB114',
     roomNature: 'Quantum Optics Lab B-14',
     piIds: ['pers_elena'],
     department: 'Physics',
-    contactPersonIds: ['pers_robert', 'pers_marcus'],
+    piDelegateIds: ['pers_robert', 'pers_marcus'],
     status: 'Active'
   },
   {
     id: 'loc_ultrafast_laser',
-    building: 'Physics Wing B',
-    roomNumber: '118',
-    spaceID: 'Physics Wing B118',
+    building: 'UST',
+    roomNumber: 'USTB118',
+    spaceID: 'USTB118',
     roomNature: 'Ultrafast Laser Lab B-18',
     piIds: ['pers_elena'],
     department: 'Physics',
-    contactPersonIds: ['pers_robert'],
+    piDelegateIds: ['pers_robert'],
     status: 'Inactive/Renovation'
   },
   {
     id: 'loc_boiler_room',
-    building: 'Service Block C',
+    building: 'LSK',
     roomNumber: 'Basement B-10',
-    spaceID: 'Service Block CBasement B-10',
+    spaceID: 'LSKBasement B-10',
     roomNature: 'Boiler & Steam Room',
     piIds: ['pers_sarah'],
     department: 'Facilities',
-    contactPersonIds: ['pers_james', 'pers_nisha'],
+    piDelegateIds: ['pers_james', 'pers_nisha'],
     status: 'Active'
   },
   {
     id: 'loc_cooling_tower',
-    building: 'Service Block B',
+    building: 'CYT',
     roomNumber: 'Roof Platform',
-    spaceID: 'Service Block BRoof Platform',
+    spaceID: 'CYTRoof Platform',
     roomNature: 'Main Cooling Tower',
     piIds: ['pers_sarah'],
     department: 'Facilities',
-    contactPersonIds: ['pers_nisha'],
+    piDelegateIds: ['pers_nisha'],
     status: 'Active'
   },
   {
     id: 'loc_chem_storage',
-    building: 'Main Science Building',
+    building: 'CML',
     roomNumber: '108',
-    spaceID: 'Main Science Building108',
+    spaceID: 'CML108',
     roomNature: 'Chemical Storage Handling Area D',
     piIds: ['pers_sarah'],
     department: 'Chemistry',
-    contactPersonIds: ['pers_james'],
+    piDelegateIds: ['pers_james'],
     status: 'Active'
   },
   {
     id: 'loc_office_space',
-    building: 'Main Science Building',
+    building: 'UST',
     roomNumber: 'Floor 1 Open Area',
-    spaceID: 'Main Science BuildingFloor 1 Open Area',
+    spaceID: 'USTFloor 1 Open Area',
     roomNature: 'Main Office Floor Open Space',
     piIds: ['pers_john'],
     department: 'Administration',
-    contactPersonIds: ['pers_john', 'pers_marcus'],
+    piDelegateIds: ['pers_john', 'pers_marcus'],
     status: 'Decommissioned'
   }
 ];

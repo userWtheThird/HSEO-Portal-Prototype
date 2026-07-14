@@ -1348,12 +1348,22 @@ export default function RadiationTab({
                               <th className="px-4 py-3">Inv. Check Status (Annual)</th>
                               <th className="px-4 py-3 text-center">Actions</th>
                             </>
-                          ) : (
+                          ) : inventoryCategory === 'unsealed' ? (
                             <>
                               <th className="px-4 py-3">Source / Isotope</th>
                               <th className="px-4 py-3">Activity</th>
+                              <th className="px-4 py-3">Department</th>
                               <th className="px-4 py-3">SpaceID</th>
                               <th className="px-4 py-3">Custodian</th>
+                              <th className="px-4 py-3 text-right">Status</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className="px-4 py-3">Equipment Description</th>
+                              <th className="px-4 py-3">Licence No.</th>
+                              <th className="px-4 py-3">Department</th>
+                              <th className="px-4 py-3">SpaceID</th>
+                              <th className="px-4 py-3">Licence Expiry</th>
                               <th className="px-4 py-3 text-right">Status</th>
                             </>
                           )}
@@ -1429,8 +1439,13 @@ export default function RadiationTab({
                                             }`}>
                                               {isUpToDate ? 'Up to Date' : 'Overdue'}
                                             </span>
+                                            {source.lastInventoryCheckDate && (
+                                              <span className="block text-[8px] text-slate-600 font-mono">
+                                                {source.lastInventoryCheckDate}
+                                              </span>
+                                            )}
                                             <span className="block text-[9px] text-slate-500 font-medium truncate max-w-[120px]">
-                                              FTM: {ftmName}
+                                              {ftmName}
                                             </span>
                                           </div>
                                         );
@@ -1462,6 +1477,12 @@ export default function RadiationTab({
                                       <span className="text-[10px] text-slate-500">{source.isotope}</span>
                                     </td>
                                     <td className="px-4 py-3 font-mono text-amber-400">{source.activity}</td>
+                                    <td className="px-4 py-3 text-slate-400">
+                                      {(() => {
+                                        const matchedLoc = locations.find(l => l.spaceID === source.spaceID);
+                                        return matchedLoc ? matchedLoc.department : 'N/A';
+                                      })()}
+                                    </td>
                                     <td className="px-4 py-3 font-mono font-bold text-slate-400">{source.spaceID || 'N/A'}</td>
                                     <td className="px-4 py-3 text-slate-400">{source.custodian}</td>
                                     <td className="px-4 py-3 text-right">

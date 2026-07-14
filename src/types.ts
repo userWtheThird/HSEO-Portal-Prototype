@@ -23,6 +23,12 @@ export interface Person {
   dwa?: 'Yes' | 'No';
 }
 
+export interface Building {
+  id: string;
+  code: string;
+  name: string;
+}
+
 export interface Location {
   id: string;
   building: string;
@@ -31,7 +37,7 @@ export interface Location {
   roomNature: string; // e.g. Chemical Lab, Office, Storage
   piIds: string[]; // Refs to Person (PIs) - can have multiple
   department: string;
-  contactPersonIds: string[]; // Refs to Person (Contacts)
+  piDelegateIds: string[]; // Refs to Person (PI's delegates / Contact persons for the room)
   status: 'Active' | 'Inactive/Renovation' | 'Decommissioned';
 }
 

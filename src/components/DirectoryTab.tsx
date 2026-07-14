@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   MapPin, 
   User, 
   Users, 
   Phone, 
   Mail, 
-  Building, 
+  Building as BuildingIcon, 
   Plus, 
   Search, 
   Shield, 
@@ -20,11 +20,14 @@ import {
   Wind,
   ClipboardCheck,
   X,
-  FileText
+  FileText,
+  Download,
+  Upload
 } from 'lucide-react';
 import { 
   Person, 
   Location, 
+  Building,
   User as AuthUser,
   Inspection,
   RadiationSource,
@@ -40,6 +43,7 @@ interface DirectoryTabProps {
   currentUser: AuthUser;
   locations: Location[];
   persons: Person[];
+  buildings: Building[];
   inspections: Inspection[];
   radiationSources: RadiationSource[];
   laserDevices: LaserDevice[];
@@ -59,6 +63,7 @@ export default function DirectoryTab({
   currentUser,
   locations,
   persons,
+  buildings,
   inspections,
   radiationSources,
   laserDevices,
@@ -75,6 +80,7 @@ export default function DirectoryTab({
 }: DirectoryTabProps) {
   const subTab = 'persons';
   const [searchQuery, setSearchQuery] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Selection details panel states
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
@@ -89,6 +95,86 @@ export default function DirectoryTab({
       }
     }
   }, [externalSelectedPersonId, onClearExternalSelectedPerson]);
+
+  // Download persons as CSV
+  const handleDownloadCSV = () => {
+    const headers = ['id', 'name', 'role', 'department', 'email', 'phone', 'title', 'status', 'dso', 'dwa', 'assignedDepartments'];
+    const rows = persons.map(p => [
+      p.id,
+      p.name,
+      p.role,
+      p.department,
+      p.email,
+      p.phone,
+      p.title || '',
+      p.status || 'Active',
+      p.dso || '',
+      p.dwa || '',
+      (p.assignedDepartments || []).join(';')
+    ]);
+    const csv = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `personnel_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Upload CSV to import/update persons
+  const handleUploadCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string;
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { alert('CSV file is empty or invalid.'); return; }
+      
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      let added = 0, updated = 0, errors = 0;
+      
+      for (let i = 1; i < lines.length; i++) {
+        try {
+          const values = lines[i].match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').replace(/""/g, '"')) || [];
+          const row: Record<string, string> = {};
+          headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
+          
+          const person: Person = {
+            id: row.id || `pers_${Date.now()}_${i}`,
+            name: row.name || '',
+            role: (row.role as Person['role']) || 'Staff',
+            department: row.department || '',
+            email: row.email || '',
+            phone: row.phone || '',
+            title: row.title || undefined,
+            status: (row.status as Person['status']) || 'Active',
+            dso: (row.dso as Person['dso']) || undefined,
+            dwa: (row.dwa as Person['dwa']) || undefined,
+            assignedDepartments: row.assignedDepartments ? row.assignedDepartments.split(';').filter(Boolean) : undefined
+          };
+          
+          const existing = persons.find(p => p.id === person.id);
+          if (existing) {
+            onUpdatePerson(person);
+            updated++;
+          } else {
+            onAddPerson(person);
+            added++;
+          }
+        } catch (err) {
+          errors++;
+        }
+      }
+      
+      alert(`CSV Import Complete\n\nAdded: ${added}\nUpdated: ${updated}\nErrors: ${errors}`);
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
   
   // Creation form toggle states
   const [showAddLoc, setShowAddLoc] = useState(false);
@@ -100,7 +186,7 @@ export default function DirectoryTab({
   const [newLocNature, setNewLocNature] = useState('');
   const [newLocPI, setNewLocPI] = useState('');
   const [newLocDept, setNewLocDept] = useState('');
-  const [newLocContacts, setNewLocContacts] = useState<string[]>([]);
+  const [newLocContacts, setNewLocContacts] = useState<string>('');
 
   // New person form state
   const [newPersName, setNewPersName] = useState('');
@@ -159,7 +245,7 @@ export default function DirectoryTab({
       roomNature: newLocNature,
       piIds: newLocPI ? [newLocPI] : [],
       department: newLocDept,
-      contactPersonIds: newLocContacts,
+      piDelegateIds: newLocContacts ? [newLocContacts] : [],
       status: 'Active'
     };
     onAddLocation(newLoc);
@@ -273,7 +359,7 @@ export default function DirectoryTab({
   const filteredLocations = locations.filter(loc => {
     const query = searchQuery.toLowerCase();
     const piName = loc.piIds.map(getPersonName).join(', ') || 'Unknown'.toLowerCase();
-    const contactNames = loc.contactPersonIds.map(getPersonName).join(' ').toLowerCase();
+    const contactNames = loc.piDelegateIds.map(getPersonName).join(' ').toLowerCase();
     return (
       loc.building.toLowerCase().includes(query) ||
       loc.roomNumber.toLowerCase().includes(query) ||
@@ -398,6 +484,29 @@ export default function DirectoryTab({
             </div>
           </div>
 
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadCSV}
+              className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg font-semibold transition shrink-0"
+            >
+              <Download className="h-3.5 w-3.5 text-emerald-400" />
+              Download CSV
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg font-semibold transition shrink-0"
+            >
+              <Upload className="h-3.5 w-3.5 text-amber-400" />
+              Upload CSV
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleUploadCSV}
+              className="hidden"
+            />
+          </div>
           <button
             onClick={() => setShowAddPerson(true)}
             className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 rounded-lg font-semibold transition shrink-0 self-start lg:self-auto"
@@ -426,14 +535,17 @@ export default function DirectoryTab({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Building *</label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={newLocBuilding}
                     onChange={(e) => setNewLocBuilding(e.target.value)}
-                    placeholder="e.g. UST, CYT, LSK, etc."
-                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
-                  />
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="">Select building...</option>
+                    {buildings.map(b => (
+                      <option key={b.id} value={b.code}>{b.code} - {b.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Room Number *</label>
@@ -483,26 +595,17 @@ export default function DirectoryTab({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Key Contact Persons</label>
-                  <div className="max-h-24 overflow-y-auto border border-slate-800 rounded p-2 space-y-1.5 bg-slate-950 custom-scrollbar">
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Contact Person (PI's Delegate)</label>
+                  <select
+                    value={newLocContacts}
+                    onChange={(e) => setNewLocContacts(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="">-- Select Delegate --</option>
                     {persons.map(pers => (
-                      <label key={pers.id} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={newLocContacts.includes(pers.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setNewLocContacts([...newLocContacts, pers.id]);
-                            } else {
-                              setNewLocContacts(newLocContacts.filter(id => id !== pers.id));
-                            }
-                          }}
-                          className="rounded border-slate-800 bg-slate-900 text-indigo-600 focus:ring-0"
-                        />
-                        <span>{pers.name} <span className="text-[9px] text-slate-500">({pers.role})</span></span>
-                      </label>
+                      <option key={pers.id} value={pers.id}>{pers.name} ({pers.role})</option>
                     ))}
-                  </div>
+                  </select>
                 </div>
               </div>
 
@@ -813,10 +916,10 @@ export default function DirectoryTab({
                   </span>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-slate-500 block">Emergency Contacts:</span>
-                  {selectedLoc.contactPersonIds.length > 0 ? (
+                  <span className="text-slate-500 block">Contact Person (PI's Delegate):</span>
+                  {selectedLoc.piDelegateIds.length > 0 ? (
                     <div className="grid grid-cols-1 gap-1.5 pl-1.5">
-                      {selectedLoc.contactPersonIds.map(id => {
+                      {selectedLoc.piDelegateIds.map(id => {
                         const person = persons.find(p => p.id === id);
                         if (!person) return null;
                         return (
@@ -1090,7 +1193,7 @@ export default function DirectoryTab({
                 {/* Managed Spatial Rooms */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-1 text-xs font-bold text-slate-300 border-b border-slate-800 pb-1.5">
-                    <Building className="h-4 w-4 text-indigo-400" />
+                    <BuildingIcon className="h-4 w-4 text-indigo-400" />
                     <span>In-Charge (PI) Rooms ({locations.filter(l => l.piIds.includes(selectedPers.id)).length})</span>
                   </div>
                   <div className="space-y-1.5 max-h-24 overflow-y-auto custom-scrollbar">
@@ -1178,7 +1281,7 @@ export default function DirectoryTab({
           ) : (
             /* DEFAULT EMPTY PANEL STATE */
             <div className="bg-slate-900 border border-slate-800 border-dashed rounded-xl p-8 text-center text-slate-500 sticky top-4">
-              <Building className="h-10 w-10 mx-auto text-slate-700 mb-3" />
+              <BuildingIcon className="h-10 w-10 mx-auto text-slate-700 mb-3" />
               <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Spatial Association Panel</h3>
               <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
                 Click on any Registered Room Location or registered Person/PI to inspect spatial configurations, emergency phone lists, and dynamic links to safety programs.
