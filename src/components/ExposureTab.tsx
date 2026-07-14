@@ -18,17 +18,6 @@ interface ExposureTabProps {
 
 const PARAMETER_TYPES = ['Total Dust', 'PM10', 'PM2.5', 'tVOC', 'Ammonia', 'Noise', 'NIR'];
 
-// Map parameter type to equipment category for filtering
-const PARAM_CATEGORY_MAP: Record<string, string[]> = {
-  'Total Dust': ['Dust Monitor', 'Air Sampler'],
-  'PM10': ['Dust Monitor', 'Air Sampler'],
-  'PM2.5': ['Dust Monitor', 'Air Sampler'],
-  'tVOC': ['Gas Detector', 'VOC Meter'],
-  'Ammonia': ['Gas Detector'],
-  'Noise': ['Noise Dosimeter'],
-  'NIR': ['NIR Sensor']
-};
-
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function ExposureTab({
@@ -49,9 +38,8 @@ export default function ExposureTab({
   const [addDate, setAddDate] = useState(new Date().toISOString().split('T')[0]);
   const [addLocationId, setAddLocationId] = useState('');
   const [addParamType, setAddParamType] = useState(PARAMETER_TYPES[0]);
-  const [addEquipmentId, setAddEquipmentId] = useState('');
   const [addTesterId, setAddTesterId] = useState('');
-  const [addResults, setAddResults] = useState<{name: string; value: string; unit: string}[]>([]);
+  const [addResults, setAddResults] = useState<{name: string; value: string; unit: string; equipmentId: string}[]>([]);
   const [addFloorPlan, setAddFloorPlan] = useState('');
   const [addDuration, setAddDuration] = useState('');
   const [addStatus, setAddStatus] = useState<ExposureRecord['status']>('Pending');
@@ -60,7 +48,7 @@ export default function ExposureTab({
 
   const resetAddForm = () => {
     setAddDate(new Date().toISOString().split('T')[0]); setAddLocationId('');
-    setAddParamType(PARAMETER_TYPES[0]); setAddEquipmentId(''); setAddTesterId('');
+    setAddParamType(PARAMETER_TYPES[0]); setAddTesterId('');
     setAddResults([]); setAddFloorPlan(''); setAddDuration('');
     setAddStatus('Pending'); setAddFollowUp(''); setAddNotes('');
   };
@@ -80,12 +68,6 @@ export default function ExposureTab({
       }
     }
   }, [addLocationId, addDate]);
-
-  // Filtered equipment by parameter type
-  const filteredEquipment = React.useMemo(() => {
-    const cats = PARAM_CATEGORY_MAP[addParamType] || [];
-    return cats.length > 0 ? equipment.filter(e => cats.includes(e.category)) : equipment;
-  }, [addParamType, equipment]);
 
   // Computed filtered records
   const displayRecords = React.useMemo(() => {
@@ -113,7 +95,7 @@ export default function ExposureTab({
     const loc = getLocation(addLocationId);
     const record: ExposureRecord = {
       id: `exp_${Date.now()}`, samplingDate: addDate, locationId: addLocationId,
-      spaceID: loc?.spaceID || '', parameterType: addParamType, equipmentId: addEquipmentId,
+      spaceID: loc?.spaceID || '', parameterType: addParamType, equipmentId: '',
       testerId: addTesterId, results: addResults.filter(r => r.name), floorPlanRef: addFloorPlan,
       sampledDuration: addDuration, status: addStatus, followUp: addFollowUp, notes: addNotes
     };
@@ -124,7 +106,7 @@ export default function ExposureTab({
   const startEdit = (record: ExposureRecord) => {
     setEditingRecord(record);
     setAddDate(record.samplingDate); setAddLocationId(record.locationId);
-    setAddParamType(record.parameterType); setAddEquipmentId(record.equipmentId);
+    setAddParamType(record.parameterType);
     setAddTesterId(record.testerId); setAddResults([...record.results]);
     setAddFloorPlan(record.floorPlanRef); setAddDuration(record.sampledDuration);
     setAddStatus(record.status); setAddFollowUp(record.followUp); setAddNotes(record.notes);
@@ -138,7 +120,7 @@ export default function ExposureTab({
     const updated: ExposureRecord = {
       ...editingRecord, samplingDate: addDate, locationId: addLocationId,
       spaceID: loc?.spaceID || editingRecord.spaceID, parameterType: addParamType,
-      equipmentId: addEquipmentId, testerId: addTesterId,
+      equipmentId: '', testerId: addTesterId,
       results: addResults.filter(r => r.name), floorPlanRef: addFloorPlan,
       sampledDuration: addDuration, status: addStatus, followUp: addFollowUp, notes: addNotes
     };
@@ -156,7 +138,7 @@ export default function ExposureTab({
   };
 
   // Add measurement row
-  const addResultRow = () => setAddResults([...addResults, { name: '', value: '', unit: '' }]);
+  const addResultRow = () => setAddResults([...addResults, { name: '', value: '', unit: '', equipmentId: '' }]);
   const removeResultRow = (idx: number) => setAddResults(addResults.filter((_, i) => i !== idx));
   const updateResultRow = (idx: number, field: string, val: string) => {
     const copy = [...addResults];
@@ -212,33 +194,16 @@ export default function ExposureTab({
             </div>
             <div>
               <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Parameter Type *</label>
-              <select required value={addParamType} onChange={(e) => { setAddParamType(e.target.value); setAddEquipmentId(''); }}
+              <select required value={addParamType} onChange={(e) => setAddParamType(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none">
                 {PARAMETER_TYPES.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Equipment</label>
-              <select value={addEquipmentId} onChange={(e) => setAddEquipmentId(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none">
-                <option value="">-- Select Equipment --</option>
-                {filteredEquipment.map(eq => <option key={eq.id} value={eq.id}>{eq.name} ({eq.serialNumber})</option>)}
-              </select>
-            </div>
-            {addEquipmentId && (() => {
-              const eq = getEquipment(addEquipmentId);
-              return eq ? (
-                <div>
-                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Last Calibrated</label>
-                  <div className="bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-400 font-mono">{eq.lastCalibrationDate || 'N/A'}</div>
-                </div>
-              ) : null;
-            })()}
-            <div>
-              <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Tester *</label>
+              <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Conducted by *</label>
               <select required value={addTesterId} onChange={(e) => setAddTesterId(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none">
-                <option value="">-- Select Tester --</option>
+                <option value="">-- Select Personnel --</option>
                 {persons.map(p => <option key={p.id} value={p.id}>{p.name} ({p.role})</option>)}
               </select>
             </div>
@@ -275,16 +240,29 @@ export default function ExposureTab({
             {addResults.length > 0 && (
               <div className="space-y-2">
                 {addResults.map((r, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <input value={r.name} onChange={(e) => updateResultRow(idx, 'name', e.target.value)} placeholder="Parameter name"
-                      className="flex-1 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none" />
-                    <input value={r.value} onChange={(e) => updateResultRow(idx, 'value', e.target.value)} placeholder="Value"
-                      className="w-24 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none font-mono" />
-                    <input value={r.unit} onChange={(e) => updateResultRow(idx, 'unit', e.target.value)} placeholder="Unit"
-                      className="w-20 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none" />
-                    <button type="button" onClick={() => removeResultRow(idx)} className="p-1 text-slate-500 hover:text-rose-400 transition">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
+                  <div key={idx} className="space-y-1.5 bg-slate-950/50 border border-slate-800/50 rounded-lg p-2.5">
+                    <div className="flex items-center gap-2">
+                      <input value={r.name} onChange={(e) => updateResultRow(idx, 'name', e.target.value)} placeholder="Parameter name"
+                        className="flex-1 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none" />
+                      <input value={r.value} onChange={(e) => updateResultRow(idx, 'value', e.target.value)} placeholder="Value"
+                        className="w-24 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none font-mono" />
+                      <input value={r.unit} onChange={(e) => updateResultRow(idx, 'unit', e.target.value)} placeholder="Unit"
+                        className="w-20 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none" />
+                      <button type="button" onClick={() => removeResultRow(idx)} className="p-1 text-slate-500 hover:text-rose-400 transition">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select value={r.equipmentId || ''} onChange={(e) => updateResultRow(idx, 'equipmentId', e.target.value)}
+                        className="flex-1 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none">
+                        <option value="">-- Equipment (optional) --</option>
+                        {equipment.map(eq => <option key={eq.id} value={eq.id}>{eq.name} ({eq.serialNumber})</option>)}
+                      </select>
+                      {r.equipmentId && (() => {
+                        const eq = getEquipment(r.equipmentId);
+                        return eq ? <span className="text-[9px] text-slate-500 font-mono">Cal: {eq.lastCalibrationDate || 'N/A'}</span> : null;
+                      })()}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -413,7 +391,6 @@ export default function ExposureTab({
               {selectedRecordId ? (() => {
                 const record = exposureRecords.find(r => r.id === selectedRecordId);
                 if (!record) return <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 text-slate-500 text-xs">Record not found.</div>;
-                const eq = getEquipment(record.equipmentId);
                 const tester = persons.find(p => p.id === record.testerId);
                 const loc = getLocation(record.locationId);
                 return (
@@ -455,16 +432,7 @@ export default function ExposureTab({
                         <span className="font-mono text-slate-400">{record.spaceID}</span>
                       </div>
                       <div>
-                        <span className="block text-[10px] text-slate-500 uppercase font-bold">Equipment</span>
-                        <span className="text-slate-200">{eq ? `${eq.name}` : '—'}</span>
-                        {eq && <span className="text-[9px] text-slate-500 block font-mono">S/N: {eq.serialNumber}</span>}
-                      </div>
-                      <div>
-                        <span className="block text-[10px] text-slate-500 uppercase font-bold">Last Calibrated</span>
-                        <span className="font-mono text-slate-400">{eq?.lastCalibrationDate || '—'}</span>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="block text-[10px] text-slate-500 uppercase font-bold">Tester</span>
+                        <span className="block text-[10px] text-slate-500 uppercase font-bold">Conducted by</span>
                         <span className="text-slate-200">{tester?.name || 'Unknown'} <span className="text-[9px] text-slate-500">({tester?.role})</span></span>
                       </div>
                       <div className="col-span-2">
@@ -481,18 +449,30 @@ export default function ExposureTab({
                           <thead>
                             <tr className="text-slate-500 uppercase text-[9px]">
                               <th className="text-left pb-1">Parameter</th>
+                              <th className="text-left pb-1 pl-2">Equipment</th>
                               <th className="text-right pb-1">Value</th>
                               <th className="text-right pb-1">Unit</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-800/40">
-                            {record.results.map((r, i) => (
-                              <tr key={i}>
-                                <td className="py-1 text-slate-300">{r.name}</td>
-                                <td className="py-1 text-right font-mono text-cyan-400">{r.value}</td>
-                                <td className="py-1 text-right text-slate-500">{r.unit}</td>
-                              </tr>
-                            ))}
+                            {record.results.map((r, i) => {
+                              const rowEq = r.equipmentId ? getEquipment(r.equipmentId) : null;
+                              return (
+                                <tr key={i}>
+                                  <td className="py-1 text-slate-300">{r.name}</td>
+                                  <td className="py-1 pl-2 text-slate-400">
+                                    {rowEq ? (
+                                      <>
+                                        <span className="text-slate-300">{rowEq.name}</span>
+                                        <span className="text-[9px] text-slate-500 block font-mono">S/N: {rowEq.serialNumber} | Cal: {rowEq.lastCalibrationDate}</span>
+                                      </>
+                                    ) : <span className="text-slate-600">—</span>}
+                                  </td>
+                                  <td className="py-1 text-right font-mono text-cyan-400">{r.value}</td>
+                                  <td className="py-1 text-right text-slate-500">{r.unit}</td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>

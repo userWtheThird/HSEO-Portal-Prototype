@@ -321,7 +321,7 @@ export interface ExposureRecord {
   parameterType: string;      // 'Total Dust' | 'PM10' | 'PM2.5' | 'tVOC' | 'Ammonia' | 'Noise' | 'NIR'
   equipmentId: string;
   testerId: string;
-  results: { name: string; value: string; unit: string }[];
+  results: { name: string; value: string; unit: string; equipmentId?: string }[];
   floorPlanRef: string;
   sampledDuration: string;
   status: 'Compliant' | 'Exceedance' | 'Pending';
