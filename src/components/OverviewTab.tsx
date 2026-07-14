@@ -9,9 +9,11 @@ import {
   FileText, 
   UserPlus, 
   TrendingUp,
-  Filter
+  Filter,
+  Calendar,
+  BarChart3
 } from 'lucide-react';
-import { User, AuditLog, Inspection, HotWorkPermit, WaterLog } from '../types';
+import { User, AuditLog, Inspection, HotWorkPermit, WaterLog, IeqSample, ExposureRecord } from '../types';
 
 interface OverviewTabProps {
   currentUser: User;
@@ -19,6 +21,8 @@ interface OverviewTabProps {
   inspections: Inspection[];
   permits: HotWorkPermit[];
   waterLogs: WaterLog[];
+  ieqSamples: IeqSample[];
+  exposureRecords: ExposureRecord[];
   onQuickNavigate: (tabId: string) => void;
 }
 
@@ -28,10 +32,20 @@ export default function OverviewTab({
   inspections,
   permits,
   waterLogs,
+  ieqSamples,
+  exposureRecords,
   onQuickNavigate,
 }: OverviewTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [programFilter, setProgramFilter] = useState('All');
+
+  // Activity period selector
+  const [periodMode, setPeriodMode] = useState<'month' | 'range'>('month');
+  const now = new Date();
+  const [activityYear, setActivityYear] = useState(String(now.getFullYear()));
+  const [activityMonth, setActivityMonth] = useState(String(now.getMonth() + 1).padStart(2, '0'));
+  const [rangeStart, setRangeStart] = useState(`${now.getFullYear()}-01-01`);
+  const [rangeEnd, setRangeEnd] = useState(now.toISOString().split('T')[0]);
 
   // Calculate compliance statistics
   const completedInspections = inspections.filter(i => i.status === 'completed');
@@ -62,6 +76,40 @@ export default function OverviewTab({
 
   // Unique program names from audit logs for filter dropdown
   const uniquePrograms = ['All', ...Array.from(new Set(auditLogs.map(l => l.program)))];
+  
+  // Month names for dropdown
+  const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  
+  // Available years across all data sources
+  const allYears = React.useMemo(() => {
+    const yrs = new Set<string>();
+    inspections.forEach(i => { if (i.date) yrs.add(i.date.slice(0, 4)); });
+    permits.forEach(p => { if (p.date) yrs.add(p.date.slice(0, 4)); });
+    waterLogs.forEach(w => { if (w.testDate) yrs.add(w.testDate.slice(0, 4)); });
+    ieqSamples.forEach(s => { if (s.date) yrs.add(s.date.slice(0, 4)); });
+    exposureRecords.forEach(e => { if (e.samplingDate) yrs.add(e.samplingDate.slice(0, 4)); });
+    return Array.from(yrs).sort().reverse();
+  }, [inspections, permits, waterLogs, ieqSamples, exposureRecords]);
+  
+  // Compute activity counts for the selected period
+  const activityCounts = React.useMemo(() => {
+    const inRange = (date: string) => {
+      if (!date) return false;
+      if (periodMode === 'month') {
+        return date.startsWith(`${activityYear}-${activityMonth}`);
+      }
+      return date >= rangeStart && date <= rangeEnd;
+    };
+    return {
+      inspections: inspections.filter(i => inRange(i.date)).length,
+      permits: permits.filter(p => inRange(p.date)).length,
+      water: waterLogs.filter(w => inRange(w.testDate)).length,
+      ieq: ieqSamples.filter(s => inRange(s.date)).length,
+      exposure: exposureRecords.filter(e => inRange(e.samplingDate)).length,
+    };
+  }, [periodMode, activityYear, activityMonth, rangeStart, rangeEnd, inspections, permits, waterLogs, ieqSamples, exposureRecords]);
+  
+  const activityTotal = activityCounts.inspections + activityCounts.permits + activityCounts.water + activityCounts.ieq + activityCounts.exposure;
 
   return (
     <div className="space-y-6">
@@ -229,6 +277,76 @@ export default function OverviewTab({
           >
             Inspect Air Quality <span>&rarr;</span>
           </button>
+        </div>
+      </div>
+
+      {/* Program Activity Summary */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-sm font-bold text-slate-200 tracking-wider uppercase flex items-center gap-2">
+              <BarChart3 className="text-cyan-400 h-4 w-4" />
+              Program Activity Summary
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">Number of records conducted in the selected period.</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Period mode toggle */}
+            <div className="flex bg-slate-800 border border-slate-700 rounded-lg p-0.5">
+              <button onClick={() => setPeriodMode('month')}
+                className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition ${periodMode === 'month' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+                <Calendar className="h-3 w-3 inline mr-1" />Month
+              </button>
+              <button onClick={() => setPeriodMode('range')}
+                className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition ${periodMode === 'range' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+                Date Range
+              </button>
+            </div>
+            {/* Month selector */}
+            {periodMode === 'month' && (
+              <>
+                <select value={activityYear} onChange={(e) => setActivityYear(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 cursor-pointer">
+                  {allYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <select value={activityMonth} onChange={(e) => setActivityMonth(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 cursor-pointer">
+                  {MONTH_LABELS.map((m, i) => <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
+                </select>
+              </>
+            )}
+            {/* Range selector */}
+            {periodMode === 'range' && (
+              <>
+                <input type="date" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5" />
+                <span className="text-slate-500 text-xs">to</span>
+                <input type="date" value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5" />
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Activity cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { label: 'Inspections', count: activityCounts.inspections, numClass: 'text-2xl font-bold text-indigo-400', borderClass: 'hover:border-indigo-500/40', tab: 'inspections' },
+            { label: 'Hot Work Permits', count: activityCounts.permits, numClass: 'text-2xl font-bold text-rose-400', borderClass: 'hover:border-rose-500/40', tab: 'hotwork' },
+            { label: 'Water Sanitation', count: activityCounts.water, numClass: 'text-2xl font-bold text-cyan-400', borderClass: 'hover:border-cyan-500/40', tab: 'water' },
+            { label: 'IEQ Samples', count: activityCounts.ieq, numClass: 'text-2xl font-bold text-emerald-400', borderClass: 'hover:border-emerald-500/40', tab: 'ieq' },
+            { label: 'Exposure Records', count: activityCounts.exposure, numClass: 'text-2xl font-bold text-amber-400', borderClass: 'hover:border-amber-500/40', tab: 'exposure' },
+            { label: 'Total', count: activityTotal, numClass: 'text-2xl font-bold text-slate-300', borderClass: 'hover:border-slate-500/40', tab: '' },
+          ].map((item) => (
+            <button
+              key={item.label}
+              onClick={() => item.tab && onQuickNavigate(item.tab)}
+              className={`bg-slate-800/50 border border-slate-800 rounded-xl p-3 text-center ${item.borderClass} transition ${item.tab ? 'cursor-pointer' : 'cursor-default'}`}
+            >
+              <div className={item.numClass}>{item.count}</div>
+              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-1">{item.label}</div>
+            </button>
+          ))}
         </div>
       </div>
 

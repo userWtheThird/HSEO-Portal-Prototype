@@ -46,6 +46,8 @@ export default function IeqTab({
   const [filterType, setFilterType] = useState<'all' | 'renovated' | 'adhoc'>('all');
   const [filterLocation, setFilterLocation] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterYear, setFilterYear] = useState('');
+  const [filterMonth, setFilterMonth] = useState('');
 
   // Add sample modal state
   const [isAddingSample, setIsAddingSample] = useState(false);
@@ -68,10 +70,20 @@ export default function IeqTab({
   const [editParamUnit, setEditParamUnit] = useState('');
   const [editParamThreshold, setEditParamThreshold] = useState('');
 
+  // Available years from data
+  const availableYears = React.useMemo(() => {
+    const years = new Set(ieqSamples.map(s => s.date?.slice(0, 4)).filter(Boolean));
+    return Array.from(years).sort().reverse();
+  }, [ieqSamples]);
+
+  const MONTH_NAMES_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
   // Filtered samples
   const filteredSamples = ieqSamples.filter(s => {
     if (filterType !== 'all' && s.samplingType !== filterType) return false;
     if (filterLocation !== 'All' && s.locationId !== filterLocation) return false;
+    if (filterYear && !s.date?.startsWith(filterYear)) return false;
+    if (filterMonth && s.date?.slice(5, 7) !== filterMonth) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (
@@ -382,6 +394,22 @@ export default function IeqTab({
               {locations.map(l => (
                 <option key={l.id} value={l.id}>{l.building} {l.roomNumber}</option>
               ))}
+            </select>
+            <select
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+              className="bg-slate-900 border border-slate-800 text-slate-300 text-xs rounded-lg px-3 py-2 cursor-pointer"
+            >
+              <option value="">All Years</option>
+              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <select
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+              className="bg-slate-900 border border-slate-800 text-slate-300 text-xs rounded-lg px-3 py-2 cursor-pointer"
+            >
+              <option value="">All Months</option>
+              {MONTH_NAMES_SHORT.map((m, i) => <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
             </select>
             <div className="flex-1" />
             <button

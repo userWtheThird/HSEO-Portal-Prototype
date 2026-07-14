@@ -1003,12 +1003,14 @@ export default function App() {
         {/* ACTIVE SUB-TAB VIEW RENDERED */}
         <div className="flex-1 p-6 overflow-y-auto">
           {activeTab === 'overview' && (
-            <OverviewTab 
+            <OverviewTab
               currentUser={currentUser}
               auditLogs={auditLogs}
               inspections={inspections}
               permits={permits}
               waterLogs={waterLogs}
+              ieqSamples={ieqSamples}
+              exposureRecords={exposureRecords}
               onQuickNavigate={(tabId) => setActiveTab(tabId)}
             />
           )}
