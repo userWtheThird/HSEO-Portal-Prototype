@@ -545,7 +545,7 @@ export default function InspectionTab({
                     <label className="block text-[10px] text-slate-400 mb-1">Refer to Contact Person</label>
                     <select value={newFindingContactId} onChange={e => setNewFindingContactId(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
                       <option value="">-- Optional --</option>
-                      {selectedLocation?.piDelegateIds.map(id => (
+                      {(selectedLocation?.piDelegateIds || []).map(id => (
                         <option key={id} value={id}>{getPersonName(id)}</option>
                       ))}
                     </select>

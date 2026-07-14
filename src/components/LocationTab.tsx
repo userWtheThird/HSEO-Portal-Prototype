@@ -150,7 +150,7 @@ export default function LocationTab({
       loc.roomNature,
       loc.department,
       loc.piIds.join(';'),
-      loc.piDelegateIds.join(';'),
+      (loc.piDelegateIds || []).join(';'),
       loc.status
     ]);
     const csv = [headers, ...rows]
@@ -388,7 +388,7 @@ export default function LocationTab({
     .filter(loc => {
       const query = searchQuery.toLowerCase();
       const piName = loc.piIds.map(getPersonName).join(', ').toLowerCase();
-      const contactNames = loc.piDelegateIds.map(getPersonName).join(' ').toLowerCase();
+      const contactNames = (loc.piDelegateIds || []).map(getPersonName).join(' ').toLowerCase();
       
       const matchesSearch = (
         loc.building.toLowerCase().includes(query) ||
@@ -1028,9 +1028,9 @@ export default function LocationTab({
                   {/* Contact Person (PI's Delegate) */}
                   <div className="space-y-1.5 mt-2 border-t border-slate-800/50 pt-2.5">
                     <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider">Contact Person (PI's Delegate):</span>
-                    {selectedLoc.piDelegateIds.length > 0 ? (
+                    {(selectedLoc.piDelegateIds || []).length > 0 ? (
                       <div className="grid grid-cols-1 gap-1 pl-1">
-                        {selectedLoc.piDelegateIds.map(id => {
+                        {(selectedLoc.piDelegateIds || []).map(id => {
                           const person = persons.find(p => p.id === id);
                           if (!person) return null;
                           return (

@@ -133,7 +133,12 @@ export default function App() {
         setIeqParameters(parsed.ieqParameters || INITIAL_IEQ_PARAMETERS);
         setIeqSamples(parsed.ieqSamples || INITIAL_IEQ_SAMPLES);
         setPersons(parsed.persons || SIMULATED_PERSONS);
-        setLocations(parsed.locations || SIMULATED_LOCATIONS);
+        // Migrate old contactPersonIds -> piDelegateIds for localStorage data
+        const migratedLocations = (parsed.locations || SIMULATED_LOCATIONS).map((loc: any) => ({
+          ...loc,
+          piDelegateIds: loc.piDelegateIds || loc.contactPersonIds || []
+        }));
+        setLocations(migratedLocations);
         setBuildings(parsed.buildings || INITIAL_BUILDINGS);
         
         const storedUser = localStorage.getItem('HSEO_PORTAL_CURRENT_USER');

@@ -359,7 +359,7 @@ export default function DirectoryTab({
   const filteredLocations = locations.filter(loc => {
     const query = searchQuery.toLowerCase();
     const piName = loc.piIds.map(getPersonName).join(', ') || 'Unknown'.toLowerCase();
-    const contactNames = loc.piDelegateIds.map(getPersonName).join(' ').toLowerCase();
+    const contactNames = (loc.piDelegateIds || []).map(getPersonName).join(' ').toLowerCase();
     return (
       loc.building.toLowerCase().includes(query) ||
       loc.roomNumber.toLowerCase().includes(query) ||
@@ -917,9 +917,9 @@ export default function DirectoryTab({
                 </div>
                 <div className="space-y-1">
                   <span className="text-slate-500 block">Contact Person (PI's Delegate):</span>
-                  {selectedLoc.piDelegateIds.length > 0 ? (
+                  {(selectedLoc.piDelegateIds || []).length > 0 ? (
                     <div className="grid grid-cols-1 gap-1.5 pl-1.5">
-                      {selectedLoc.piDelegateIds.map(id => {
+                      {(selectedLoc.piDelegateIds || []).map(id => {
                         const person = persons.find(p => p.id === id);
                         if (!person) return null;
                         return (
