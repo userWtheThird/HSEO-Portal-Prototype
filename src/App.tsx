@@ -22,7 +22,8 @@ import {
   FolderOpen,
   Lock,
   Plane,
-  Activity
+  Activity,
+  Wrench
 } from 'lucide-react';
 
 import { 
@@ -41,7 +42,9 @@ import {
   IeqLog, 
   IeqComplaint,
   IeqParameter,
-  IeqSample 
+  IeqSample,
+  Equipment,
+  ExposureRecord 
 } from './types';
 
 import { 
@@ -60,7 +63,9 @@ import {
   INITIAL_IEQ_LOGS, 
   INITIAL_IEQ_COMPLAINTS,
   INITIAL_IEQ_PARAMETERS,
-  INITIAL_IEQ_SAMPLES 
+  INITIAL_IEQ_SAMPLES,
+  INITIAL_EQUIPMENT,
+  INITIAL_EXPOSURE_RECORDS 
 } from './mockData';
 
 // Sub-component tabs
@@ -75,6 +80,8 @@ import IeqTab from './components/IeqTab';
 import LocationTab from './components/LocationTab';
 import DirectoryTab from './components/DirectoryTab';
 import FtmTab from './components/FtmTab';
+import EquipmentTab from './components/EquipmentTab';
+import ExposureTab from './components/ExposureTab';
 
 export default function App() {
   // Navigation active tab
@@ -105,6 +112,8 @@ export default function App() {
   const [persons, setPersons] = useState<Person[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
+  const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
+  const [exposureRecords, setExposureRecords] = useState<ExposureRecord[]>([]);
 
   // Local notifications simulated list
   const [notifications, setNotifications] = useState<string[]>([
@@ -140,6 +149,8 @@ export default function App() {
         }));
         setLocations(migratedLocations);
         setBuildings(parsed.buildings || INITIAL_BUILDINGS);
+        setEquipmentList(parsed.equipmentList || INITIAL_EQUIPMENT);
+        setExposureRecords(parsed.exposureRecords || INITIAL_EXPOSURE_RECORDS);
         
         const storedUser = localStorage.getItem('HSEO_PORTAL_CURRENT_USER');
         if (storedUser) {
@@ -163,6 +174,8 @@ export default function App() {
         setPersons(SIMULATED_PERSONS);
         setLocations(SIMULATED_LOCATIONS);
         setBuildings(INITIAL_BUILDINGS);
+        setEquipmentList(INITIAL_EQUIPMENT);
+        setExposureRecords(INITIAL_EXPOSURE_RECORDS);
       }
     } catch (e) {
       console.error("Error reading LocalStorage state: ", e);
@@ -186,6 +199,8 @@ export default function App() {
     persons: Person[];
     locations: Location[];
     buildings: Building[];
+    equipmentList: Equipment[];
+    exposureRecords: ExposureRecord[];
   }>) => {
     try {
       const currentState = {
@@ -203,7 +218,9 @@ export default function App() {
         ieqSamples: updated.ieqSamples ?? ieqSamples,
         persons: updated.persons ?? persons,
         locations: updated.locations ?? locations,
-        buildings: updated.buildings ?? buildings
+        buildings: updated.buildings ?? buildings,
+        equipmentList: updated.equipmentList ?? equipmentList,
+        exposureRecords: updated.exposureRecords ?? exposureRecords
       };
       localStorage.setItem('HSEO_PORTAL_STATE_V1', JSON.stringify(currentState));
     } catch (e) {
@@ -259,6 +276,50 @@ export default function App() {
     setBuildings(next);
     const nextLogs = addAuditLog('Deleted Building', logDetails, 'System');
     saveState({ buildings: next, auditLogs: nextLogs });
+  };
+
+  // Equipment Handlers
+  const handleAddEquipment = (eq: Equipment, logDetails: string) => {
+    const next = [...equipmentList, eq];
+    setEquipmentList(next);
+    const nextLogs = addAuditLog('Added Equipment', logDetails, 'System');
+    saveState({ equipmentList: next, auditLogs: nextLogs });
+  };
+
+  const handleUpdateEquipment = (updated: Equipment, logDetails: string) => {
+    const next = equipmentList.map(e => e.id === updated.id ? updated : e);
+    setEquipmentList(next);
+    const nextLogs = addAuditLog('Updated Equipment', logDetails, 'System');
+    saveState({ equipmentList: next, auditLogs: nextLogs });
+  };
+
+  const handleDeleteEquipment = (eqId: string, logDetails: string) => {
+    const next = equipmentList.filter(e => e.id !== eqId);
+    setEquipmentList(next);
+    const nextLogs = addAuditLog('Deleted Equipment', logDetails, 'System');
+    saveState({ equipmentList: next, auditLogs: nextLogs });
+  };
+
+  // Exposure Record Handlers
+  const handleAddExposure = (record: ExposureRecord, logDetails: string) => {
+    const next = [...exposureRecords, record];
+    setExposureRecords(next);
+    const nextLogs = addAuditLog('Added Exposure Record', logDetails, 'System');
+    saveState({ exposureRecords: next, auditLogs: nextLogs });
+  };
+
+  const handleUpdateExposure = (updated: ExposureRecord, logDetails: string) => {
+    const next = exposureRecords.map(r => r.id === updated.id ? updated : r);
+    setExposureRecords(next);
+    const nextLogs = addAuditLog('Updated Exposure Record', logDetails, 'System');
+    saveState({ exposureRecords: next, auditLogs: nextLogs });
+  };
+
+  const handleDeleteExposure = (recordId: string, logDetails: string) => {
+    const next = exposureRecords.filter(r => r.id !== recordId);
+    setExposureRecords(next);
+    const nextLogs = addAuditLog('Deleted Exposure Record', logDetails, 'System');
+    saveState({ exposureRecords: next, auditLogs: nextLogs });
   };
 
   // Switch Active Sim User
@@ -681,6 +742,15 @@ export default function App() {
                 <Users className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
                 <span>Field Team Assignment</span>
               </button>
+              <button 
+                onClick={() => { setActiveTab('equipment'); setMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
+                  activeTab === 'equipment' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                }`}
+              >
+                <Wrench className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+                <span>Equipment</span>
+              </button>
             </div>
           )}
 
@@ -1099,11 +1169,26 @@ export default function App() {
           )}
 
           {activeTab === 'exposure' && (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <Activity className="h-12 w-12 text-slate-700 mb-4" />
-              <h2 className="text-lg font-bold text-slate-300">Exposure Monitoring</h2>
-              <p className="text-xs text-slate-500 mt-2 max-w-sm">This module is under development. Occupational exposure monitoring for chemical, biological, and physical hazards will be available here.</p>
-            </div>
+            <ExposureTab 
+              currentUser={currentUser}
+              exposureRecords={exposureRecords}
+              equipment={equipmentList}
+              locations={locations}
+              persons={persons}
+              onAddRecord={handleAddExposure}
+              onUpdateRecord={handleUpdateExposure}
+              onDeleteRecord={handleDeleteExposure}
+            />
+          )}
+
+          {activeTab === 'equipment' && (
+            <EquipmentTab 
+              currentUser={currentUser}
+              equipment={equipmentList}
+              onAddEquipment={handleAddEquipment}
+              onUpdateEquipment={handleUpdateEquipment}
+              onDeleteEquipment={handleDeleteEquipment}
+            />
           )}
         </div>
 
