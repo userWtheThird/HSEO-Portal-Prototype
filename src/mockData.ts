@@ -56,7 +56,7 @@ export const SIMULATED_USERS: User[] = [
     id: 'user_elena',
     name: 'Dr. Elena Rostova',
     email: 'elena.rostova@hseo-portal.net',
-    role: 'radiation_officer',
+    role: 'PI',
     avatarColor: 'bg-amber-600 text-white',
     title: 'Radiation & Laser Protection Officer'
   },
@@ -195,11 +195,11 @@ export const SIMULATED_PERSONS: Person[] = [
   {
     id: 'pers_elena',
     name: 'Elena Rostova',
-    role: 'Staff',
+    role: 'PI',
     department: 'OKT',
     email: 'elena.rostova@hseo-portal.net',
     phone: '+1 (555) 019-4822',
-    title: 'Admin'
+    title: 'Professor'
   },
   {
     id: 'pers_MJ',
@@ -374,7 +374,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     timestamp: '2026-07-11T11:45:00Z',
     userId: 'user_elena',
     userName: 'Dr. Elena Rostova',
-    userRole: 'radiation_officer',
+    userRole: 'PI',
     action: 'Conducted Laser Interlock Safety Test',
     details: 'Coherent Verdi laser (LSR-03) interlock system successfully verified.',
     program: 'Laser'
@@ -404,7 +404,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     timestamp: '2026-07-09T15:05:00Z',
     userId: 'user_elena',
     userName: 'Dr. Elena Rostova',
-    userRole: 'radiation_officer',
+    userRole: 'PI',
     action: 'Updated Dosimeter Log',
     details: 'Uploaded Q2 2026 dosimeter data. All personnel within ALARA thresholds.',
     program: 'Radiation'
