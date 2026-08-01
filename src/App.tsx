@@ -23,7 +23,10 @@ import {
   Lock,
   Plane,
   Activity,
-  Wrench
+  Wrench,
+  PanelLeftClose,
+  PanelLeftOpen,
+  UserCheck
 } from 'lucide-react';
 
 import { 
@@ -87,6 +90,7 @@ export default function App() {
   // Navigation active tab
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(true);
 
   // Collapsible sidebar sections
   const [databasesOpen, setDatabasesOpen] = useState(true);
@@ -665,20 +669,26 @@ export default function App() {
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col md:flex-row antialiased">
       
       {/* SIDEBAR NAVIGATION PANEL */}
-      <aside className={`w-full md:w-64 bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col shrink-0 ${mobileMenuOpen ? 'block' : 'hidden md:flex'}`}>
+      <aside className={`${sidebarCollapsed ? 'md:w-14' : 'md:w-64'} w-full bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col shrink-0 transition-all duration-200 ${mobileMenuOpen ? 'block' : 'hidden md:flex'}`}>
         
         {/* Brand Header */}
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-emerald-600 text-white shadow shadow-emerald-500/20">
+        <div className={`${sidebarCollapsed ? 'p-3 justify-center' : 'p-5 justify-between'} border-b border-slate-800 flex items-center`}>
+          {!sidebarCollapsed && (
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-emerald-600 text-white shadow shadow-emerald-500/20">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <span className="font-bold text-sm text-slate-100 tracking-wide block">HSEO PORTAL</span>
+                <span className="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Last Updated: Jul 13, 2026</span>
+              </div>
+            </div>
+          )}
+          {sidebarCollapsed && (
+            <div className="p-1.5 rounded-lg bg-emerald-600 text-white shadow shadow-emerald-500/20" title="HSEO Portal">
               <ShieldCheck className="h-5 w-5" />
             </div>
-            <div>
-              <span className="font-bold text-sm text-slate-100 tracking-wide block">HSEO PORTAL</span>
-              <span className="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Last Updated: Jul 13, 2026</span>
-            </div>
-          </div>
-          
+          )}
           <button 
             onClick={() => setMobileMenuOpen(false)}
             className="md:hidden p-1.5 text-slate-400 hover:text-slate-100"
@@ -687,214 +697,240 @@ export default function App() {
           </button>
         </div>
 
+        {/* Collapse Toggle (desktop only) */}
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          className="hidden md:flex items-center justify-center py-2 border-b border-slate-800 text-slate-500 hover:text-slate-300 hover:bg-slate-800/40 transition"
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </button>
+
         {/* Navigation Tabs */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className={`flex-1 ${sidebarCollapsed ? 'p-2' : 'p-4'} space-y-1 overflow-y-auto`}>
 
           {/* Portal Overview */}
           <button 
             onClick={() => { setActiveTab('overview'); setMobileMenuOpen(false); }}
-            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${
+            title="Portal Overview"
+            className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'gap-2.5 px-3'} py-2.5 rounded-lg text-xs font-semibold transition ${
               activeTab === 'overview' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
             }`}
           >
             <LayoutDashboard className="h-4 w-4 shrink-0" />
-            <span>Portal Overview</span>
+            {!sidebarCollapsed && <span>Portal Overview</span>}
           </button>
 
           {/* Divider */}
           <div className="border-t border-slate-800 my-2" />
 
-          {/* Databases (collapsible) */}
-          <button
-            onClick={() => setDatabasesOpen(!databasesOpen)}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300 hover:bg-slate-800/40 transition"
-          >
-            <Database className="h-3.5 w-3.5 shrink-0" />
-            <span className="flex-1 text-left">Databases</span>
-            {databasesOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          </button>
-          {databasesOpen && (
-            <div className="ml-3 space-y-0.5 border-l border-slate-800 pl-2">
-              <button 
-                onClick={() => { setActiveTab('location'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'location' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <MapPin className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
-                <span>Locations</span>
+          {/* Databases */}
+          {sidebarCollapsed ? (
+            <>
+              <button onClick={() => { setActiveTab('location'); setMobileMenuOpen(false); }} title="Locations"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'location' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <MapPin className="h-3.5 w-3.5" />
               </button>
-              <button 
-                onClick={() => { setActiveTab('directory'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'directory' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <Users className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
-                <span>Personnel Directory</span>
+              <button onClick={() => { setActiveTab('directory'); setMobileMenuOpen(false); }} title="Personnel Directory"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'directory' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <Users className="h-3.5 w-3.5" />
               </button>
-              <button 
-                onClick={() => { setActiveTab('ftm'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'ftm' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <Users className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
-                <span>Field Team Assignment</span>
+              <button onClick={() => { setActiveTab('ftm'); setMobileMenuOpen(false); }} title="Field Team Assignment"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'ftm' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <UserCheck className="h-3.5 w-3.5" />
               </button>
-              <button 
-                onClick={() => { setActiveTab('equipment'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'equipment' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <Wrench className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-                <span>Equipment</span>
+              <button onClick={() => { setActiveTab('equipment'); setMobileMenuOpen(false); }} title="Equipment"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'equipment' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <Wrench className="h-3.5 w-3.5" />
               </button>
-            </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setDatabasesOpen(!databasesOpen)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300 hover:bg-slate-800/40 transition"
+              >
+                <Database className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 text-left">Databases</span>
+                {databasesOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              </button>
+              {databasesOpen && (
+                <div className="ml-3 space-y-0.5 border-l border-slate-800 pl-2">
+                  <button onClick={() => { setActiveTab('location'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'location' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-indigo-400" /><span>Locations</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('directory'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'directory' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Users className="h-3.5 w-3.5 shrink-0 text-indigo-400" /><span>Personnel Directory</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('ftm'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'ftm' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Users className="h-3.5 w-3.5 shrink-0 text-indigo-400" /><span>Field Team Assignment</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('equipment'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'equipment' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Wrench className="h-3.5 w-3.5 shrink-0 text-amber-400" /><span>Equipment</span>
+                  </button>
+                </div>
+              )}
+            </>
           )}
 
           {/* Divider */}
           <div className="border-t border-slate-800 my-2" />
 
-          {/* Safety Program (collapsible) */}
-          <button
-            onClick={() => setSafetyOpen(!safetyOpen)}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300 hover:bg-slate-800/40 transition"
-          >
-            <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-            <span className="flex-1 text-left">Safety Program</span>
-            {safetyOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          </button>
-          {safetyOpen && (
-            <div className="ml-3 space-y-0.5 border-l border-slate-800 pl-2">
-              <button 
-                onClick={() => { setActiveTab('inspections'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'inspections' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <ClipboardCheck className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
-                <span>Inspection</span>
+          {/* Safety Program */}
+          {sidebarCollapsed ? (
+            <>
+              <button onClick={() => { setActiveTab('inspections'); setMobileMenuOpen(false); }} title="Inspection"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'inspections' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <ClipboardCheck className="h-3.5 w-3.5" />
               </button>
-              <button 
-                onClick={() => { setActiveTab('radiation'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'radiation' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <Radio className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                <span>Radiation</span>
+              <button onClick={() => { setActiveTab('radiation'); setMobileMenuOpen(false); }} title="Radiation"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'radiation' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <Radio className="h-3.5 w-3.5" />
               </button>
-              <button 
-                onClick={() => { setActiveTab('laser'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'laser' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <Zap className="h-3.5 w-3.5 shrink-0 text-purple-400" />
-                <span>Laser</span>
+              <button onClick={() => { setActiveTab('laser'); setMobileMenuOpen(false); }} title="Laser"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'laser' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <Zap className="h-3.5 w-3.5" />
               </button>
-            </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setSafetyOpen(!safetyOpen)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300 hover:bg-slate-800/40 transition"
+              >
+                <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 text-left">Safety Program</span>
+                {safetyOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              </button>
+              {safetyOpen && (
+                <div className="ml-3 space-y-0.5 border-l border-slate-800 pl-2">
+                  <button onClick={() => { setActiveTab('inspections'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'inspections' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <ClipboardCheck className="h-3.5 w-3.5 shrink-0 text-indigo-400" /><span>Inspection</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('radiation'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'radiation' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Radio className="h-3.5 w-3.5 shrink-0 text-amber-500" /><span>Radiation</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('laser'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'laser' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Zap className="h-3.5 w-3.5 shrink-0 text-purple-400" /><span>Laser</span>
+                  </button>
+                </div>
+              )}
+            </>
           )}
 
           {/* Divider */}
           <div className="border-t border-slate-800 my-2" />
 
-          {/* Permits (collapsible) */}
-          <button
-            onClick={() => setPermitsOpen(!permitsOpen)}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300 hover:bg-slate-800/40 transition"
-          >
-            <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-            <span className="flex-1 text-left">Permits</span>
-            {permitsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          </button>
-          {permitsOpen && (
-            <div className="ml-3 space-y-0.5 border-l border-slate-800 pl-2">
-              <button 
-                onClick={() => { setActiveTab('hotwork'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'hotwork' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <Flame className="h-3.5 w-3.5 shrink-0 text-rose-400" />
-                <span>Hot Work Permits</span>
+          {/* Permits */}
+          {sidebarCollapsed ? (
+            <>
+              <button onClick={() => { setActiveTab('hotwork'); setMobileMenuOpen(false); }} title="Hot Work Permits"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'hotwork' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <Flame className="h-3.5 w-3.5" />
               </button>
-              <button 
-                onClick={() => { setActiveTab('cse'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'cse' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <Lock className="h-3.5 w-3.5 shrink-0 text-orange-400" />
-                <span>Confined Space Entry</span>
+              <button onClick={() => { setActiveTab('cse'); setMobileMenuOpen(false); }} title="Confined Space Entry"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'cse' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <Lock className="h-3.5 w-3.5" />
               </button>
-              <button 
-                onClick={() => { setActiveTab('uav'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'uav' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <Plane className="h-3.5 w-3.5 shrink-0 text-sky-400" />
-                <span>UAV</span>
+              <button onClick={() => { setActiveTab('uav'); setMobileMenuOpen(false); }} title="UAV"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'uav' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <Plane className="h-3.5 w-3.5" />
               </button>
-            </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setPermitsOpen(!permitsOpen)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300 hover:bg-slate-800/40 transition"
+              >
+                <FolderOpen className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 text-left">Permits</span>
+                {permitsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              </button>
+              {permitsOpen && (
+                <div className="ml-3 space-y-0.5 border-l border-slate-800 pl-2">
+                  <button onClick={() => { setActiveTab('hotwork'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'hotwork' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Flame className="h-3.5 w-3.5 shrink-0 text-rose-400" /><span>Hot Work Permits</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('cse'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'cse' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Lock className="h-3.5 w-3.5 shrink-0 text-orange-400" /><span>Confined Space Entry</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('uav'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'uav' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Plane className="h-3.5 w-3.5 shrink-0 text-sky-400" /><span>UAV</span>
+                  </button>
+                </div>
+              )}
+            </>
           )}
 
           {/* Divider */}
           <div className="border-t border-slate-800 my-2" />
 
-          {/* Public Hygiene (collapsible) */}
-          <button
-            onClick={() => setHygieneOpen(!hygieneOpen)}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300 hover:bg-slate-800/40 transition"
-          >
-            <Activity className="h-3.5 w-3.5 shrink-0" />
-            <span className="flex-1 text-left">Public Hygiene</span>
-            {hygieneOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          </button>
-          {hygieneOpen && (
-            <div className="ml-3 space-y-0.5 border-l border-slate-800 pl-2">
-              <button 
-                onClick={() => { setActiveTab('exposure'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'exposure' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <Activity className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-                <span>Exposure Monitoring</span>
+          {/* Public Hygiene */}
+          {sidebarCollapsed ? (
+            <>
+              <button onClick={() => { setActiveTab('exposure'); setMobileMenuOpen(false); }} title="Exposure Monitoring"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'exposure' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <Activity className="h-3.5 w-3.5" />
               </button>
-              <button 
-                onClick={() => { setActiveTab('water'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'water' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <Droplets className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
-                <span>Water Sanitation</span>
+              <button onClick={() => { setActiveTab('water'); setMobileMenuOpen(false); }} title="Water Sanitation"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'water' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <Droplets className="h-3.5 w-3.5" />
               </button>
-              <button 
-                onClick={() => { setActiveTab('ieq'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'ieq' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <Wind className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
-                <span>IEQ</span>
+              <button onClick={() => { setActiveTab('ieq'); setMobileMenuOpen(false); }} title="IEQ"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'ieq' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <Wind className="h-3.5 w-3.5" />
               </button>
-            </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setHygieneOpen(!hygieneOpen)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300 hover:bg-slate-800/40 transition"
+              >
+                <Activity className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 text-left">Public Hygiene</span>
+                {hygieneOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              </button>
+              {hygieneOpen && (
+                <div className="ml-3 space-y-0.5 border-l border-slate-800 pl-2">
+                  <button onClick={() => { setActiveTab('exposure'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'exposure' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Activity className="h-3.5 w-3.5 shrink-0 text-amber-400" /><span>Exposure Monitoring</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('water'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'water' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Droplets className="h-3.5 w-3.5 shrink-0 text-cyan-400" /><span>Water Sanitation</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('ieq'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'ieq' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Wind className="h-3.5 w-3.5 shrink-0 text-emerald-400" /><span>IEQ</span>
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </nav>
 
         {/* Factory Reset button */}
-        <div className="p-4 border-t border-slate-800">
+        <div className={`${sidebarCollapsed ? 'p-2' : 'p-4'} border-t border-slate-800`}>
           <button 
             onClick={handleFactoryReset}
-            className="w-full flex items-center justify-center gap-1.5 bg-slate-800/40 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-slate-200 py-2 rounded-lg text-[10px] font-bold tracking-wider uppercase transition"
+            title="Factory Reset States"
+            className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-center gap-1.5'} bg-slate-800/40 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-slate-200 py-2 rounded-lg text-[10px] font-bold tracking-wider uppercase transition`}
           >
             <Database className="h-3.5 w-3.5" />
-            Factory Reset States
+            {!sidebarCollapsed && <span>Factory Reset States</span>}
           </button>
         </div>
       </aside>
