@@ -111,6 +111,9 @@ export default function LocationTab({
   const [newLocDept, setNewLocDept] = useState('');
   const [newLocContacts, setNewLocContacts] = useState<string>('');
   const [newLocStatus, setNewLocStatus] = useState<'Active' | 'Inactive/Renovation' | 'Decommissioned'>('Active');
+  const [newLocSpaceType, setNewLocSpaceType] = useState<'Lab' | 'Non-lab'>('Lab');
+  const [newLocFrequency, setNewLocFrequency] = useState<number>(2);
+  const [newLocStartMonth, setNewLocStartMonth] = useState<string>('');
 
   // Editing location states
   const [isEditingRoom, setIsEditingRoom] = useState(false);
@@ -122,6 +125,9 @@ export default function LocationTab({
   const [editLocPI, setEditLocPI] = useState('');
   const [editLocContacts, setEditLocContacts] = useState<string>('');
   const [editLocStatus, setEditLocStatus] = useState<'Active' | 'Inactive/Renovation' | 'Decommissioned'>('Active');
+  const [editLocSpaceType, setEditLocSpaceType] = useState<'Lab' | 'Non-lab'>('Lab');
+  const [editLocFrequency, setEditLocFrequency] = useState<number>(2);
+  const [editLocStartMonth, setEditLocStartMonth] = useState<string>('');
 
   // Buildings sub-tab states
   const [showAddBuilding, setShowAddBuilding] = useState(false);
@@ -141,13 +147,16 @@ export default function LocationTab({
 
   // Download locations as CSV
   const handleDownloadCSV = () => {
-    const headers = ['id', 'building', 'roomNumber', 'spaceID', 'roomNature', 'department', 'piIds', 'piDelegateIds', 'status'];
+    const headers = ['id', 'building', 'roomNumber', 'spaceID', 'roomNature', 'spaceType', 'inspectionFrequency', 'inspectionStartMonth', 'department', 'piIds', 'piDelegateIds', 'status'];
     const rows = locations.map(loc => [
       loc.id,
       loc.building,
       loc.roomNumber,
       loc.spaceID,
       loc.roomNature,
+      loc.spaceType || '',
+      String(loc.inspectionFrequency ?? ''),
+      loc.inspectionStartMonth || '',
       loc.department,
       loc.piIds.join(';'),
       (loc.piDelegateIds || []).join(';'),
@@ -190,6 +199,9 @@ export default function LocationTab({
             roomNumber: row.roomNumber || '',
             spaceID: row.spaceID || '',
             roomNature: row.roomNature || '',
+            spaceType: (row.spaceType as 'Lab' | 'Non-lab') || undefined,
+            inspectionFrequency: row.inspectionFrequency ? Number(row.inspectionFrequency) : undefined,
+            inspectionStartMonth: row.inspectionStartMonth || undefined,
             department: row.department || '',
             piIds: row.piIds ? row.piIds.split(';').filter(Boolean) : [],
             piDelegateIds: row.piDelegateIds ? row.piDelegateIds.split(';').filter(Boolean) : [],
@@ -305,6 +317,9 @@ export default function LocationTab({
       roomNumber: newLocRoom,
       spaceID: newLocSpaceID,
       roomNature: newLocNature,
+      spaceType: newLocSpaceType,
+      inspectionFrequency: newLocFrequency,
+      inspectionStartMonth: newLocStartMonth || undefined,
       piIds: newLocPI ? [newLocPI] : [],
       department: newLocDept,
       piDelegateIds: newLocContacts ? [newLocContacts] : [],
@@ -321,6 +336,9 @@ export default function LocationTab({
     setNewLocDept('');
     setNewLocContacts('');
     setNewLocStatus('Active');
+    setNewLocSpaceType('Lab');
+    setNewLocFrequency(2);
+    setNewLocStartMonth('');
     setShowAddLoc(false);
   };
 
@@ -338,6 +356,9 @@ export default function LocationTab({
       roomNumber: editLocRoom,
       spaceID: editLocSpaceID,
       roomNature: editLocNature,
+      spaceType: editLocSpaceType,
+      inspectionFrequency: editLocFrequency,
+      inspectionStartMonth: editLocStartMonth || undefined,
       department: editLocDept,
       piIds: [editLocPI],
       piDelegateIds: editLocContacts ? [editLocContacts] : [],
@@ -357,6 +378,9 @@ export default function LocationTab({
     setEditLocPI(loc.piIds[0] || '');
     setEditLocContacts(loc.piDelegateIds?.[0] || '');
     setEditLocStatus(loc.status || 'Active');
+    setEditLocSpaceType(loc.spaceType || (loc.roomNature.toLowerCase().includes('lab') ? 'Lab' : 'Non-lab'));
+    setEditLocFrequency(loc.inspectionFrequency ?? (loc.roomNature.toLowerCase().includes('lab') ? 2 : 1));
+    setEditLocStartMonth(loc.inspectionStartMonth || '');
     setIsEditingRoom(true);
   };
 
@@ -641,6 +665,38 @@ export default function LocationTab({
                   />
                 </div>
                 <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Space Type *</label>
+                  <select
+                    value={newLocSpaceType}
+                    onChange={(e) => { const v = e.target.value as 'Lab' | 'Non-lab'; setNewLocSpaceType(v); setNewLocFrequency(v === 'Lab' ? 2 : 1); }}
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
+                  >
+                    <option value="Lab">Lab</option>
+                    <option value="Non-lab">Non-lab</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Inspection Frequency (per year) {currentUser.role !== 'superadmin' && '(read-only)'}</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={newLocFrequency}
+                    onChange={(e) => setNewLocFrequency(Number(e.target.value))}
+                    disabled={currentUser.role !== 'superadmin'}
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Inspection Start Month</label>
+                  <input
+                    type="month"
+                    value={newLocStartMonth}
+                    onChange={(e) => setNewLocStartMonth(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+                <div>
                   <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Department *</label>
                   <input
                     type="text"
@@ -896,6 +952,38 @@ export default function LocationTab({
                       />
                     </div>
                     <div>
+                      <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Space Type *</label>
+                      <select
+                        value={editLocSpaceType}
+                        onChange={(e) => { const v = e.target.value as 'Lab' | 'Non-lab'; setEditLocSpaceType(v); if (currentUser.role === 'superadmin') setEditLocFrequency(v === 'Lab' ? 2 : 1); }}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
+                      >
+                        <option value="Lab">Lab</option>
+                        <option value="Non-lab">Non-lab</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Inspection Frequency (per year) {currentUser.role !== 'superadmin' && '(read-only)'}</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={editLocFrequency}
+                        onChange={(e) => setEditLocFrequency(Number(e.target.value))}
+                        disabled={currentUser.role !== 'superadmin'}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Inspection Start Month</label>
+                      <input
+                        type="month"
+                        value={editLocStartMonth}
+                        onChange={(e) => setEditLocStartMonth(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
                       <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Department *</label>
                       <input
                         type="text"
@@ -1016,6 +1104,26 @@ export default function LocationTab({
                     <span className="text-slate-500">Department:</span>
                     <span className="font-bold text-slate-300">{selectedLoc.department}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Space Type:</span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${
+                      selectedLoc.spaceType === 'Lab'
+                        ? 'bg-indigo-950/40 text-indigo-400 border-indigo-900/30'
+                        : 'bg-slate-800/60 text-slate-400 border-slate-700/30'
+                    }`}>
+                      {selectedLoc.spaceType || (selectedLoc.roomNature.toLowerCase().includes('lab') ? 'Lab' : 'Non-lab')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Inspection Frequency:</span>
+                    <span className="font-bold text-amber-300">{selectedLoc.inspectionFrequency ?? (selectedLoc.spaceType === 'Lab' || selectedLoc.roomNature.toLowerCase().includes('lab') ? 2 : 1)}/year</span>
+                  </div>
+                  {selectedLoc.inspectionStartMonth && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Inspections Start:</span>
+                      <span className="font-mono text-slate-300">{selectedLoc.inspectionStartMonth}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-slate-500">Person in Charge (PI):</span>
                     <span className="font-bold text-indigo-400 hover:underline cursor-pointer" onClick={() => {

@@ -112,7 +112,7 @@ const DEFAULT_SAMPLING_POINTS: WaterSamplingPoint[] = [
     id: 'sp_3',
     name: 'Staff Pantry Sink (Potable)',
     type: 'Other potables source',
-    department: 'Administration',
+    department: 'President\'s Office',
     status: 'Active',
     latestSampleDate: '2026-04-12',
     latestStatus: 'Pass'
@@ -326,7 +326,7 @@ export default function WaterTab({
   const uniqueDepartments = Array.from(new Set([
     ...locations.map(l => l.department),
     ...persons.map(p => p.department),
-    'Facilities Engineering', 'Health Services', 'Administration', 'Athletics & Recreation', 'Landscaping & Grounds'
+    'Facilities Engineering', 'Health Services', 'President\'s Office', 'Athletics & Recreation', 'Landscaping & Grounds'
   ])).sort();
 
   // Helper: calculate next due date based on previous sampling month and water source interval

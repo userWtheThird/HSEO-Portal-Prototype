@@ -75,6 +75,14 @@ export const SIMULATED_USERS: User[] = [
     role: 'facilities',
     avatarColor: 'bg-cyan-600 text-white',
     title: 'Lead Utilities & Facilities Engineer'
+  },
+  {
+    id: 'user_userw',
+    name: 'UserW',
+    email: 'userw@hseo-portal.net',
+    role: 'superadmin',
+    avatarColor: 'bg-violet-600 text-white',
+    title: 'Servant'
   }
 ];
 
@@ -86,6 +94,7 @@ export const SIMULATED_PERSONS: Person[] = [
     role: 'Field Team Member',
     department: 'HSEO',
     assignedDepartments: ['PHYS'],
+    assignedFocalPoints: ['Radiation', 'Laser', 'UAV'],
     email: 'ftm1@hseo-portal.net',
     phone: '+1 (555) 000-0001',
     title: 'Field Team Member 1'
@@ -95,7 +104,8 @@ export const SIMULATED_PERSONS: Person[] = [
     name: 'FTM Person 2',
     role: 'Field Team Member',
     department: 'HSEO',
-    assignedDepartments: ['CHEM'],
+    assignedDepartments: ['Department of Chemistry'],
+    assignedFocalPoints: ['Inspection', 'Hot Work Permits', 'Confined Space Entry'],
     email: 'ftm2@hseo-portal.net',
     phone: '+1 (555) 000-0002',
     title: 'Field Team Member 2'
@@ -106,6 +116,7 @@ export const SIMULATED_PERSONS: Person[] = [
     role: 'Field Team Member',
     department: 'HSEO',
     assignedDepartments: ['OKT'],
+    assignedFocalPoints: ['Exposure Monitoring', 'Water Sanitation', 'IEQ'],
     email: 'ftm3@hseo-portal.net',
     phone: '+1 (555) 000-0003',
     title: 'Field Team Member 3'
@@ -116,6 +127,7 @@ export const SIMULATED_PERSONS: Person[] = [
     role: 'Field Team Member',
     department: 'HSEO',
     assignedDepartments: ['LIFS'],
+    assignedFocalPoints: ['Inspection', 'Radiation', 'Water Sanitation'],
     email: 'ftm4@hseo-portal.net',
     phone: '+1 (555) 000-0004',
     title: 'Field Team Member 4'
@@ -178,7 +190,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_chem_1',
     name: 'Chemist GONG',
     role: 'Staff',
-    department: 'CHEM',
+    department: 'Department of Chemistry',
     email: 'chem1@hseo-portal.net',
     phone: '+1 (555) 000-0011',
     title: 'TO'
@@ -187,7 +199,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_sarah',
     name: 'Sarah Jenkins',
     role: 'Principal Investigator (PI)',
-    department: 'CHEM',
+    department: 'Department of Chemistry',
     email: 'sarah.jenkins@hseo-portal.net',
     phone: '+1 (555) 019-2831',
     title: 'Professor'
@@ -205,7 +217,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_MJ',
     name: 'MJ Dancer',
     role: 'HSEO Management',
-    department: 'OKT',
+    department: 'HSEO',
     email: 'mjj@hseo-portal.net',
     phone: '+1 (555) 019-3841',
     title: 'Senior Manager'
@@ -245,6 +257,18 @@ export const SIMULATED_PERSONS: Person[] = [
     email: 'john.thompson@hseo-portal.net',
     phone: '+1 (555) 019-8900',
     title: 'Office Administrator'
+  },
+  {
+    id: 'pers_userw',
+    name: 'UserW',
+    role: 'Superadmin',
+    department: 'HSEO',
+    email: 'userw@hseo-portal.net',
+    phone: '+1 (555) 000-9999',
+    title: 'Servant',
+    dso: 'No',
+    dwa: 'No',
+    status: 'Active'
   }
 ];
 
@@ -257,6 +281,16 @@ export const INITIAL_BUILDINGS: Building[] = [
   { id: 'bld_5', code: 'CML', name: 'Costal Marine Laboratory' }
 ];
 
+export const INITIAL_DEPARTMENTS: string[] = [
+  'Department of Chemistry',
+  'Department of Physics',
+  'Department of Biology',
+  'Campus Management Office',
+  "President's Office",
+  'OKT',
+  'LIFS'
+];
+
 export const SIMULATED_LOCATIONS: Location[] = [
   {
     id: 'loc_chem_prep',
@@ -264,8 +298,11 @@ export const SIMULATED_LOCATIONS: Location[] = [
     roomNumber: '1302',
     spaceID: 'UST1302',
     roomNature: 'Chemical Prep Lab',
+    spaceType: 'Lab',
+    inspectionFrequency: 2,
+    inspectionStartMonth: '2026-01',
     piIds: ['pers_elena'],
-    department: 'CHEM',
+    department: 'Department of Chemistry',
     piDelegateIds: ['pers_james', 'pers_chem1'],
     status: 'Active'
   },
@@ -275,8 +312,11 @@ export const SIMULATED_LOCATIONS: Location[] = [
     roomNumber: '1105',
     spaceID: 'UST1105',
     roomNature: 'Nuclear Physics Lab Storage B',
+    spaceType: 'Lab',
+    inspectionFrequency: 2,
+    inspectionStartMonth: '2026-01',
     piIds: ['pers_phys_1'],
-    department: 'Physics',
+    department: 'Department of Physics',
     piDelegateIds: ['pers_phys_2'],
     status: 'Active'
   },
@@ -286,8 +326,11 @@ export const SIMULATED_LOCATIONS: Location[] = [
     roomNumber: 'B114',
     spaceID: 'USTB114',
     roomNature: 'Quantum Optics Lab B-14',
+    spaceType: 'Lab',
+    inspectionFrequency: 2,
+    inspectionStartMonth: '2026-01',
     piIds: ['pers_elena'],
-    department: 'Physics',
+    department: 'Department of Physics',
     piDelegateIds: ['pers_robert', 'pers_marcus'],
     status: 'Active'
   },
@@ -297,8 +340,11 @@ export const SIMULATED_LOCATIONS: Location[] = [
     roomNumber: 'USTB118',
     spaceID: 'USTB118',
     roomNature: 'Ultrafast Laser Lab B-18',
+    spaceType: 'Lab',
+    inspectionFrequency: 2,
+    inspectionStartMonth: '2026-01',
     piIds: ['pers_elena'],
-    department: 'Physics',
+    department: 'Department of Physics',
     piDelegateIds: ['pers_robert'],
     status: 'Inactive/Renovation'
   },
@@ -308,8 +354,11 @@ export const SIMULATED_LOCATIONS: Location[] = [
     roomNumber: 'Basement B-10',
     spaceID: 'LSKBasement B-10',
     roomNature: 'Boiler & Steam Room',
+    spaceType: 'Non-lab',
+    inspectionFrequency: 1,
+    inspectionStartMonth: '2026-01',
     piIds: ['pers_sarah'],
-    department: 'Facilities',
+    department: 'Campus Management Office',
     piDelegateIds: ['pers_james', 'pers_nisha'],
     status: 'Active'
   },
@@ -319,8 +368,11 @@ export const SIMULATED_LOCATIONS: Location[] = [
     roomNumber: 'Roof Platform',
     spaceID: 'CYTRoof Platform',
     roomNature: 'Main Cooling Tower',
+    spaceType: 'Non-lab',
+    inspectionFrequency: 1,
+    inspectionStartMonth: '2026-01',
     piIds: ['pers_sarah'],
-    department: 'Facilities',
+    department: 'Campus Management Office',
     piDelegateIds: ['pers_nisha'],
     status: 'Active'
   },
@@ -330,8 +382,11 @@ export const SIMULATED_LOCATIONS: Location[] = [
     roomNumber: '108',
     spaceID: 'CML108',
     roomNature: 'Chemical Storage Handling Area D',
+    spaceType: 'Lab',
+    inspectionFrequency: 2,
+    inspectionStartMonth: '2026-12',
     piIds: ['pers_sarah'],
-    department: 'Chemistry',
+    department: 'Department of Chemistry',
     piDelegateIds: ['pers_james'],
     status: 'Active'
   },
@@ -341,8 +396,11 @@ export const SIMULATED_LOCATIONS: Location[] = [
     roomNumber: 'Floor 1 Open Area',
     spaceID: 'USTFloor 1 Open Area',
     roomNature: 'Main Office Floor Open Space',
+    spaceType: 'Non-lab',
+    inspectionFrequency: 1,
+    inspectionStartMonth: '2026-01',
     piIds: ['pers_john'],
-    department: 'Administration',
+    department: 'President\'s Office',
     piDelegateIds: ['pers_john', 'pers_marcus'],
     status: 'Decommissioned'
   }
@@ -575,7 +633,7 @@ export const INITIAL_RADIATION_SOURCES: RadiationSource[] = [
     sourceName: 'Diagnostic X-Ray Unit-A',
     equipmentDescription: 'High-frequency digital diagnostic radiography system',
     licenceNumber: 'RAD-LIC-2026-8842',
-    department: 'Physics',
+    department: 'Department of Physics',
     location: 'LSK Rm 105',
     spaceID: 'LSK105',
     xrayTubeSerialNumbers: 'XRAY-TUBE-9921-A, XRAY-TUBE-9921-B',

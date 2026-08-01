@@ -40,7 +40,7 @@ const DEFAULT_RUAS: Rua[] = [
     id: 'rua_1',
     spaceID: 'LSK105',
     type: 'Communal',
-    department: 'Physics',
+    department: 'Department of Physics',
     personInCharge: 'Sarah Jenkins',
     groups: [
       {
@@ -68,7 +68,7 @@ const DEFAULT_RUAS: Rua[] = [
     id: 'rua_2',
     spaceID: 'UST302',
     type: 'Individual',
-    department: 'Chemistry',
+    department: 'Department of Chemistry',
     piId: 'pers_elena',
     piName: 'Dr. Elena Rostova',
     isotopes: ['Tritium (H-3)', 'Sulfur-35'],
@@ -168,7 +168,7 @@ export default function RadiationTab({
   // States for adding dosimeter log
   const [isAddingDose, setIsAddingDose] = useState(false);
   const [doseEmployee, setDoseEmployee] = useState('');
-  const [doseDept, setDoseDept] = useState('Physics');
+  const [doseDept, setDoseDept] = useState('Department of Physics');
   const [doseVal, setDoseVal] = useState<number>(1.2);
   const [doseThreshold, setDoseThreshold] = useState<number>(1.0);
   const [doseError, setDoseError] = useState<string | null>(null);
@@ -176,7 +176,7 @@ export default function RadiationTab({
   // --- RUA FORM FIELDS STATES ---
   const [ruaSpaceID, setRuaSpaceID] = useState('');
   const [ruaType, setRuaType] = useState<'Communal' | 'Individual'>('Communal');
-  const [ruaDept, setRuaDept] = useState('Physics');
+  const [ruaDept, setRuaDept] = useState('Department of Physics');
   const [ruaPic, setRuaPic] = useState('');
   // Individual fields
   const [ruaPiId, setRuaPiId] = useState('');
@@ -275,7 +275,7 @@ export default function RadiationTab({
 
       // Apparatus specific
       licenceNumber: inventoryCategory === 'apparatus' ? licenceNumber : undefined,
-      department: inventoryCategory === 'apparatus' ? apparatusDept || (matchedLoc ? matchedLoc.department : 'Physics') : undefined,
+      department: inventoryCategory === 'apparatus' ? apparatusDept || (matchedLoc ? matchedLoc.department : 'Department of Physics') : undefined,
       equipmentDescription: inventoryCategory === 'apparatus' ? equipmentDescription : undefined,
       xrayTubeSerialNumbers: inventoryCategory === 'apparatus' ? xrayTubeSerialNumbers : undefined,
       licenceExpiryDate: inventoryCategory === 'apparatus' ? licenceExpiryDate : undefined,
@@ -580,7 +580,7 @@ export default function RadiationTab({
     if (filterDept !== 'All') {
       let sourceDept = 'Unknown';
       if (source.category === 'apparatus') {
-        sourceDept = source.department || 'Physics';
+        sourceDept = source.department || 'Department of Physics';
       } else {
         const matchedLoc = locations.find(l => l.spaceID === source.spaceID);
         if (matchedLoc) sourceDept = matchedLoc.department;
@@ -1413,14 +1413,14 @@ export default function RadiationTab({
                                     <td className="px-4 py-3 text-slate-400">
                                       {(() => {
                                         const matchedLoc = locations.find(l => l.spaceID === source.spaceID);
-                                        return matchedLoc ? matchedLoc.department : 'Physics';
+                                        return matchedLoc ? matchedLoc.department : 'Department of Physics';
                                       })()}
                                     </td>
                                     <td className="px-4 py-3 font-mono font-bold text-amber-400">{source.spaceID}</td>
                                     <td className="px-4 py-3">
                                       {(() => {
                                         const matchedLoc = locations.find(l => l.spaceID === source.spaceID);
-                                        const dept = matchedLoc ? matchedLoc.department : 'Physics';
+                                        const dept = matchedLoc ? matchedLoc.department : 'Department of Physics';
                                         const ftm = persons.find(p => p.role === 'Field Team Member' && p.assignedDepartments?.includes(dept)) 
                                                  || persons.find(p => p.role === 'Field Team Member');
                                         const ftmName = ftm ? ftm.name : 'Unassigned';
@@ -1500,7 +1500,7 @@ export default function RadiationTab({
                                   <>
                                     <td className="px-4 py-3 font-semibold text-slate-100">{source.sourceName || source.equipmentDescription}</td>
                                     <td className="px-4 py-3 text-amber-500 font-mono font-medium">{source.licenceNumber}</td>
-                                    <td className="px-4 py-3 text-slate-400">{source.department || 'Physics'}</td>
+                                    <td className="px-4 py-3 text-slate-400">{source.department || 'Department of Physics'}</td>
                                     <td className="px-4 py-3 font-bold font-mono text-slate-300">{source.spaceID}</td>
                                     <td className="px-4 py-3 text-slate-400 font-medium">
                                       {source.licenceExpiryDate || 'N/A'}
@@ -1604,7 +1604,7 @@ export default function RadiationTab({
                           </div>
                           <div className="flex justify-between">
                             <span className="text-slate-500">Department:</span>
-                            <span className="font-bold text-slate-300">{selectedSource.department || 'Physics'}</span>
+                            <span className="font-bold text-slate-300">{selectedSource.department || 'Department of Physics'}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-slate-500">Licence Expiry Date:</span>

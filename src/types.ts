@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'inspector' | 'radiation_officer' | 'operator' | 'facilities' | 'PI' | 'Contact' | 'FTM';
+export type Role = 'superadmin' | 'admin' | 'inspector' | 'radiation_officer' | 'operator' | 'facilities' | 'PI' | 'Contact' | 'FTM';
 
 export interface User {
   id: string;
@@ -12,9 +12,10 @@ export interface User {
 export interface Person {
   id: string;
   name: string;
-  role: 'Principal Investigator (PI)' | 'Staff' | 'Student' | 'Field Team Member' | 'HSEO Management' | 'Viewer' | 'PI' | 'Contact' | 'Officer' | 'FTM' | 'HSEO management';
+  role: 'Principal Investigator (PI)' | 'Staff' | 'Student' | 'Field Team Member' | 'HSEO Management' | 'Viewer' | 'PI' | 'Contact' | 'Officer' | 'FTM' | 'HSEO management' | 'Superadmin';
   department: string;
   assignedDepartments?: string[]; // for FTMs
+  assignedFocalPoints?: string[]; // for FTMs — program focal points
   email: string;
   phone: string;
   title?: string;
@@ -35,6 +36,9 @@ export interface Location {
   roomNumber: string;
   spaceID: string;
   roomNature: string; // e.g. Chemical Lab, Office, Storage
+  spaceType?: 'Lab' | 'Non-lab';
+  inspectionFrequency?: number; // inspections per year (default: 2 for Lab, 1 for Non-lab)
+  inspectionStartMonth?: string; // e.g. "2026-12" — first month inspections begin
   piIds: string[]; // Refs to Person (PIs) - can have multiple
   department: string;
   piDelegateIds: string[]; // Refs to Person (PI's delegates / Contact persons for the room)
@@ -81,7 +85,32 @@ export interface Inspection {
   appointmentDate?: string;
   ftmId?: string;
   reportIssuedDate?: string;
-  inspectionStatus?: 'scheduled' | 'drafting_report' | 'supervisor_review' | 'issued' | 'pending_rectification' | 'closed';
+  inspectionStatus?: 'scheduled' | 'ready_to_go' | 'drafting_report' | 'supervisor_review' | 'issued' | 'pending_rectification' | 'closed';
+  inspectionType?: 'scheduled' | 'night';
+  department?: string;
+}
+
+export interface InspectionBooking {
+  id: string;
+  date: string;
+  time: string;
+  locationId: string;
+  bookedBy: string; // person id
+  bookedByName: string;
+  inspectionId?: string; // linked inspection record once created
+}
+
+export interface InspectionWindow {
+  id: string;
+  department: string;
+  title: string; // e.g. "Week of Aug 4–8"
+  startDate: string;
+  endDate: string;
+  timeSlots: string[]; // e.g. ["09:00", "10:00", "14:00", "15:00"]
+  openedBy: string; // FTM name
+  openedById: string;
+  status: 'open' | 'closed';
+  bookings: InspectionBooking[];
 }
 
 export interface RadiationSource {

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ShieldCheck, 
-  Users, 
-  ClipboardCheck, 
-  Radio, 
-  Zap, 
-  Flame, 
-  Trash2, 
-  Droplets, 
-  Wind, 
+import {
+  ShieldCheck,
+  Users,
+  ClipboardCheck,
+  Radio,
+  Zap,
+  Flame,
+  Trash2,
+  Droplets,
+  Wind,
   LayoutDashboard,
   LogOut,
   Bell,
@@ -17,6 +17,7 @@ import {
   X,
   Database,
   MapPin,
+  Building2,
   ChevronDown,
   ChevronRight,
   FolderOpen,
@@ -26,7 +27,9 @@ import {
   Wrench,
   PanelLeftClose,
   PanelLeftOpen,
-  UserCheck
+  UserCheck,
+  CalendarClock,
+  ArrowLeft
 } from 'lucide-react';
 
 import { 
@@ -47,7 +50,8 @@ import {
   IeqParameter,
   IeqSample,
   Equipment,
-  ExposureRecord 
+  ExposureRecord,
+  InspectionWindow 
 } from './types';
 
 import { 
@@ -68,7 +72,8 @@ import {
   INITIAL_IEQ_PARAMETERS,
   INITIAL_IEQ_SAMPLES,
   INITIAL_EQUIPMENT,
-  INITIAL_EXPOSURE_RECORDS 
+  INITIAL_EXPOSURE_RECORDS,
+  INITIAL_DEPARTMENTS 
 } from './mockData';
 
 // Sub-component tabs
@@ -83,10 +88,15 @@ import IeqTab from './components/IeqTab';
 import LocationTab from './components/LocationTab';
 import DirectoryTab from './components/DirectoryTab';
 import FtmTab from './components/FtmTab';
+import DepartmentTab from './components/DepartmentTab';
 import EquipmentTab from './components/EquipmentTab';
 import ExposureTab from './components/ExposureTab';
+import InspectionBookingTab from './components/InspectionBookingTab';
 
 export default function App() {
+  // Portal view: landing → portal (HSEO staff) or booking (department users)
+  const [portalView, setPortalView] = useState<'landing' | 'portal' | 'booking'>('landing');
+
   // Navigation active tab
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
@@ -99,7 +109,7 @@ export default function App() {
   const [hygieneOpen, setHygieneOpen] = useState(true);
 
   // States
-  const [currentUser, setCurrentUser] = useState<User>(SIMULATED_USERS[0]);
+  const [currentUser, setCurrentUser] = useState<User>(SIMULATED_USERS.find(u => ['superadmin', 'admin', 'FTM', 'inspector'].includes(u.role)) || SIMULATED_USERS[0]);
   const [selectedDirectoryPersonId, setSelectedDirectoryPersonId] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
@@ -118,6 +128,8 @@ export default function App() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
   const [exposureRecords, setExposureRecords] = useState<ExposureRecord[]>([]);
+  const [inspectionWindows, setInspectionWindows] = useState<InspectionWindow[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
 
   // Local notifications simulated list
   const [notifications, setNotifications] = useState<string[]>([
@@ -155,6 +167,8 @@ export default function App() {
         setBuildings(parsed.buildings || INITIAL_BUILDINGS);
         setEquipmentList(parsed.equipmentList || INITIAL_EQUIPMENT);
         setExposureRecords(parsed.exposureRecords || INITIAL_EXPOSURE_RECORDS);
+        setInspectionWindows(parsed.inspectionWindows || []);
+        setDepartments(parsed.departments || INITIAL_DEPARTMENTS);
         
         const storedUser = localStorage.getItem('HSEO_PORTAL_CURRENT_USER');
         if (storedUser) {
@@ -180,6 +194,8 @@ export default function App() {
         setBuildings(INITIAL_BUILDINGS);
         setEquipmentList(INITIAL_EQUIPMENT);
         setExposureRecords(INITIAL_EXPOSURE_RECORDS);
+        setInspectionWindows([]);
+        setDepartments(INITIAL_DEPARTMENTS);
       }
     } catch (e) {
       console.error("Error reading LocalStorage state: ", e);
@@ -205,6 +221,8 @@ export default function App() {
     buildings: Building[];
     equipmentList: Equipment[];
     exposureRecords: ExposureRecord[];
+    inspectionWindows: InspectionWindow[];
+    departments: string[];
   }>) => {
     try {
       const currentState = {
@@ -224,7 +242,9 @@ export default function App() {
         locations: updated.locations ?? locations,
         buildings: updated.buildings ?? buildings,
         equipmentList: updated.equipmentList ?? equipmentList,
-        exposureRecords: updated.exposureRecords ?? exposureRecords
+        exposureRecords: updated.exposureRecords ?? exposureRecords,
+        inspectionWindows: updated.inspectionWindows ?? inspectionWindows,
+        departments: updated.departments ?? departments
       };
       localStorage.setItem('HSEO_PORTAL_STATE_V1', JSON.stringify(currentState));
     } catch (e) {
@@ -236,6 +256,11 @@ export default function App() {
     const nextPersons = persons.map(p => p.id === updated.id ? updated : p);
     setPersons(nextPersons);
     saveState({ persons: nextPersons });
+  };
+
+  const handleUpdateDepartments = (next: string[]) => {
+    setDepartments(next);
+    saveState({ departments: next });
   };
 
   const handleUpdateLocation = (updatedLoc: Location) => {
@@ -324,6 +349,20 @@ export default function App() {
     setExposureRecords(next);
     const nextLogs = addAuditLog('Deleted Exposure Record', logDetails, 'System');
     saveState({ exposureRecords: next, auditLogs: nextLogs });
+  };
+
+  // Inspection Booking Window handlers
+  const handleAddWindow = (w: InspectionWindow) => {
+    const next = [...inspectionWindows, w];
+    setInspectionWindows(next);
+    const nextLogs = addAuditLog('Opened Booking Window', `${w.title} for ${w.department}`, 'Inspection');
+    saveState({ inspectionWindows: next, auditLogs: nextLogs });
+  };
+
+  const handleUpdateWindow = (w: InspectionWindow) => {
+    const next = inspectionWindows.map(x => x.id === w.id ? w : x);
+    setInspectionWindows(next);
+    saveState({ inspectionWindows: next });
   };
 
   // Switch Active Sim User
@@ -665,6 +704,71 @@ export default function App() {
   // Check if system has any outstanding red alerts
   const totalUrgentAlerts = notifications.length;
 
+  // HSEO staff roles allowed in the portal
+  const HSEO_ROLES = ['superadmin', 'admin', 'FTM', 'inspector'];
+  const hseoUsers = SIMULATED_USERS.filter(u => HSEO_ROLES.includes(u.role));
+
+  // --- LANDING PAGE ---
+  if (portalView === 'landing') {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-8 text-center">
+          <div className="space-y-3">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 mx-auto">
+              <ShieldCheck className="h-8 w-8" />
+            </div>
+            <h1 className="text-2xl font-extrabold text-slate-100">HSEO Portal</h1>
+            <p className="text-sm text-slate-400">Health, Safety & Environment Office</p>
+          </div>
+
+          <div className="space-y-3">
+            <button onClick={() => setPortalView('portal')}
+              className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20">
+              <Lock className="h-4 w-4" /> Login to HSEO Portal
+            </button>
+            <button onClick={() => setPortalView('booking')}
+              className="w-full py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-bold transition flex items-center justify-center gap-2">
+              <CalendarClock className="h-4 w-4 text-indigo-400" /> Book an Inspection
+            </button>
+          </div>
+
+          <p className="text-[10px] text-slate-600">HSEO staff only. Department users please use “Book an Inspection”.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // --- STANDALONE BOOKING PAGE (for department users) ---
+  if (portalView === 'booking') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+        <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setPortalView('landing')} className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition">
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="p-1 rounded bg-emerald-600 text-white"><ShieldCheck className="h-3.5 w-3.5" /></div>
+              <span className="text-xs font-bold text-slate-200">HSEO — Inspection Booking</span>
+            </div>
+          </div>
+        </header>
+        <main className="max-w-4xl mx-auto p-6">
+          <InspectionBookingTab
+            currentUser={currentUser}
+            windows={inspectionWindows}
+            locations={locations}
+            persons={persons}
+            onAddWindow={handleAddWindow}
+            onUpdateWindow={handleUpdateWindow}
+            onAddInspection={handleAddInspection}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  // --- HSEO PORTAL (staff only) ---
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col md:flex-row antialiased">
       
@@ -743,6 +847,10 @@ export default function App() {
                 className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'equipment' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                 <Wrench className="h-3.5 w-3.5" />
               </button>
+              <button onClick={() => { setActiveTab('departments'); setMobileMenuOpen(false); }} title="Departments"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'departments' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <Building2 className="h-3.5 w-3.5" />
+              </button>
             </>
           ) : (
             <>
@@ -772,6 +880,10 @@ export default function App() {
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'equipment' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                     <Wrench className="h-3.5 w-3.5 shrink-0 text-amber-400" /><span>Equipment</span>
                   </button>
+                  <button onClick={() => { setActiveTab('departments'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'departments' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Building2 className="h-3.5 w-3.5 shrink-0 text-indigo-400" /><span>Departments</span>
+                  </button>
                 </div>
               )}
             </>
@@ -786,6 +898,10 @@ export default function App() {
               <button onClick={() => { setActiveTab('inspections'); setMobileMenuOpen(false); }} title="Inspection"
                 className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'inspections' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                 <ClipboardCheck className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => { setActiveTab('booking'); setMobileMenuOpen(false); }} title="Booking Windows"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'booking' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <CalendarClock className="h-3.5 w-3.5" />
               </button>
               <button onClick={() => { setActiveTab('radiation'); setMobileMenuOpen(false); }} title="Radiation"
                 className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'radiation' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
@@ -811,6 +927,10 @@ export default function App() {
                   <button onClick={() => { setActiveTab('inspections'); setMobileMenuOpen(false); }}
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'inspections' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                     <ClipboardCheck className="h-3.5 w-3.5 shrink-0 text-indigo-400" /><span>Inspection</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('booking'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'booking' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <CalendarClock className="h-3.5 w-3.5 shrink-0 text-emerald-400" /><span>Booking Windows</span>
                   </button>
                   <button onClick={() => { setActiveTab('radiation'); setMobileMenuOpen(false); }}
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'radiation' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
@@ -986,7 +1106,7 @@ export default function App() {
                   onChange={(e) => handleUserSwitch(e.target.value)}
                   className="bg-slate-800/80 hover:bg-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer font-semibold appearance-none pr-8"
                 >
-                  {SIMULATED_USERS.map((user) => (
+                  {hseoUsers.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.name.split(' ')[0]} ({user.role.toUpperCase()})
                     </option>
@@ -1033,6 +1153,12 @@ export default function App() {
               )}
             </div>
 
+            {/* Exit to landing */}
+            <button onClick={() => setPortalView('landing')} title="Exit to landing page"
+              className="p-2 bg-slate-800/60 hover:bg-rose-950/40 border border-slate-700/60 hover:border-rose-900/40 text-slate-400 hover:text-rose-300 rounded-lg transition shrink-0">
+              <LogOut className="h-4 w-4" />
+            </button>
+
           </div>
         </header>
 
@@ -1060,6 +1186,18 @@ export default function App() {
               onAddInspection={handleAddInspection}
               onUpdateFindings={handleUpdateFindings}
               onUpdateInspection={handleUpdateInspection}
+            />
+          )}
+
+          {activeTab === 'booking' && (
+            <InspectionBookingTab
+              currentUser={currentUser}
+              windows={inspectionWindows}
+              locations={locations}
+              persons={persons}
+              onAddWindow={handleAddWindow}
+              onUpdateWindow={handleUpdateWindow}
+              onAddInspection={handleAddInspection}
             />
           )}
 
@@ -1185,8 +1323,15 @@ export default function App() {
           {activeTab === 'ftm' && (
             <FtmTab 
               persons={persons}
-              locations={locations}
+              departments={departments}
               onUpdatePerson={handleUpdatePerson}
+            />
+          )}
+
+          {activeTab === 'departments' && (
+            <DepartmentTab
+              departments={departments}
+              onUpdateDepartments={handleUpdateDepartments}
             />
           )}
 
