@@ -1,0 +1,60 @@
+name: Build and publish to main root
+
+on:
+  push:
+    branches:
+      - main
+
+# Prevent the workflow from running on commits made by the GitHub Actions bot (avoids infinite loop)
+# The job will be skipped if the actor is the bot that pushes the build back.
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-publish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # allow pushing back to the same repo
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Copy build output to repo root
+        run: |
+          # remove previous generated assets in .site-temp (clean)
+          rm -rf .site-temp
+          mkdir .site-temp
+          cp -r dist/* .site-temp/ || true
+          # copy build files into repo root (overwrites)
+          rsync -a --delete .site-temp/ ./
+
+      - name: Commit and push built files to main
+        env:
+          GIT_AUTHOR_NAME: github-actions
+          GIT_AUTHOR_EMAIL: github-actions@github.com
+        run: |
+          git add -A
+          # only commit if there are changes
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: publish built site to main root [ci skip]"
+            git push origin HEAD:main
+          fi
