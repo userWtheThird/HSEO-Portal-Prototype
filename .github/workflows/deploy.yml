@@ -1,38 +1,46 @@
-name: Deploy Vite App Test
+name: Build and deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
 
 permissions:
-  contents: read
   pages: write
   id-token: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
 
-      - run: npm install
-      - run: npm run build
+      - name: Install dependencies
+        run: npm install
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Build
+        run: npm run build
+
+      - name: Upload artifact for deployment
+        uses: actions/upload-pages-artifact@v1
         with:
           path: ./dist
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-
-    environment:
-      name: github-pages
+    permissions:
+      pages: write
+      id-token: write
 
     steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v1    steps:
       - uses: actions/deploy-pages@v4
