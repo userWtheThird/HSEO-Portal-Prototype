@@ -2,19 +2,22 @@ import React, { useState } from 'react';
 import {
   ClipboardCheck, Plus, Calendar, Check, X,
   ChevronRight, Download, Camera, Clock,
-  Image as ImageIcon, ArrowLeft, Moon, Sun, Building2, CheckCircle2, Circle, Bell, AlertTriangle
+  Image as ImageIcon, ArrowLeft, Moon, Sun, Building2, CheckCircle2, Circle, Bell, AlertTriangle, CalendarClock, Lock, Unlock
 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import { Inspection, User as AppUser, Location, Person, Finding } from '../types';
+import { Inspection, User as AppUser, Location, Person, Finding, InspectionWindow } from '../types';
 
 interface InspectionTabProps {
   currentUser: AppUser;
   inspections: Inspection[];
   locations: Location[];
   persons: Person[];
+  windows: InspectionWindow[];
   onAddInspection: (inspection: Inspection, logDetails: string) => void;
   onUpdateFindings: (inspectionId: string, findingId: string, status: 'open' | 'resolved', correctiveAction?: string) => void;
   onUpdateInspection: (updated: Inspection) => void;
+  onAddWindow: (w: InspectionWindow) => void;
+  onUpdateWindow: (w: InspectionWindow) => void;
 }
 
 const CATEGORIES = ['fire safety', 'biosafety', 'chemical safety', 'housekeeping', 'electrical', 'general'];
@@ -76,8 +79,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function InspectionTab({
-  currentUser, inspections, locations, persons,
-  onAddInspection, onUpdateFindings, onUpdateInspection
+  currentUser, inspections, locations, persons, windows,
+  onAddInspection, onUpdateFindings, onUpdateInspection, onAddWindow, onUpdateWindow
 }: InspectionTabProps) {
   // View navigation: dashboard → department → detail
   const [view, setView] = useState<'dashboard' | 'department' | 'detail'>('dashboard');
@@ -89,6 +92,41 @@ export default function InspectionTab({
   const [schedLocationId, setSchedLocationId] = useState('');
   const [schedDate, setSchedDate] = useState('');
   const [schedType, setSchedType] = useState<'scheduled' | 'night'>('scheduled');
+
+  // Booking window creation
+  const [selectedLocIds, setSelectedLocIds] = useState<string[]>([]);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [bwStart, setBwStart] = useState('');
+  const [bwEnd, setBwEnd] = useState('');
+  const [bwSlots, setBwSlots] = useState<string[]>(['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']);
+  const [bwCustomSlot, setBwCustomSlot] = useState('');
+
+  const toggleLocSelection = (id: string) => {
+    setSelectedLocIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleOpenBookingWindow = () => {
+    if (!selectedDept || !bwStart || !bwEnd || selectedLocIds.length === 0) return;
+    const locNames = selectedLocIds.map(id => {
+      const l = locations.find(x => x.id === id);
+      return l ? `${l.building} Rm ${l.roomNumber}` : '';
+    }).filter(Boolean).join(', ');
+    const newWindow: InspectionWindow = {
+      id: 'iwin_' + Date.now(),
+      department: selectedDept,
+      title: `Inspection Booking: ${locNames}`,
+      startDate: bwStart,
+      endDate: bwEnd,
+      timeSlots: bwSlots.length > 0 ? bwSlots : ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+      openedBy: currentUser.name,
+      openedById: currentUser.id,
+      status: 'open',
+      bookings: []
+    };
+    onAddWindow(newWindow);
+    setShowBookingModal(false);
+    setBwStart(''); setBwEnd(''); setSelectedLocIds([]);
+  };
 
   // Finding draft
   const [isDraftingFinding, setIsDraftingFinding] = useState(false);
@@ -431,10 +469,18 @@ export default function InspectionTab({
                 <p className="text-xs text-slate-400">{deptLocations.length} locations</p>
               </div>
             </div>
-            <button onClick={() => { setIsScheduling(true); setSchedLocationId(deptLocations[0]?.id || ''); }}
-              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition">
-              <Plus className="h-4 w-4" /> Schedule Inspection
-            </button>
+            <div className="flex items-center gap-2">
+              {selectedLocIds.length > 0 && (
+                <button onClick={() => setShowBookingModal(true)}
+                  className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition">
+                  <CalendarClock className="h-4 w-4" /> Open Booking Window ({selectedLocIds.length})
+                </button>
+              )}
+              <button onClick={() => { setIsScheduling(true); setSchedLocationId(deptLocations[0]?.id || ''); }}
+                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition">
+                <Plus className="h-4 w-4" /> Schedule Inspection
+              </button>
+            </div>
           </div>
 
           {/* Locations in this department */}
@@ -449,13 +495,18 @@ export default function InspectionTab({
                 const nextDue = getNextInspectionDue(loc, inspections);
                 const todayStr = new Date().toISOString().split('T')[0];
                 const isOverdue = nextDue ? nextDue <= todayStr : true;
+                const isSelected = selectedLocIds.includes(loc.id);
+                const isActive = loc.status === 'Active';
                 return (
-                  <div key={loc.id} className="px-4 py-3 flex items-center justify-between hover:bg-slate-800/20 transition">
+                  <div key={loc.id} className={`px-4 py-3 flex items-center justify-between transition ${isSelected ? 'bg-emerald-950/20' : 'hover:bg-slate-800/20'} ${!isActive ? 'opacity-60' : ''}`}>
                     <div className="flex items-center gap-3">
+                      <input type="checkbox" checked={isSelected} disabled={!isActive} onChange={() => toggleLocSelection(loc.id)}
+                        className="h-3.5 w-3.5 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500/40 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40" title={isActive ? 'Select for booking window' : 'Inactive locations cannot be booked'} />
                       {done >= required ? <CheckCircle2 className="h-4 w-4 text-emerald-300" /> : <Circle className="h-4 w-4 text-slate-600" />}
                       <div>
                         <span className="text-xs font-semibold text-slate-200">{loc.building} Rm {loc.roomNumber}</span>
                         <span className="text-[10px] text-slate-500 ml-2">{loc.roomNature}</span>
+                        {!isActive && <span className="text-[9px] font-bold uppercase text-rose-300/80 bg-rose-950/40 border border-rose-900/40 rounded px-1.5 py-0.5 ml-2">{loc.status}</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-[10px] text-slate-400">
@@ -473,6 +524,41 @@ export default function InspectionTab({
               })}
             </div>
           </div>
+
+          {/* Booking windows for this department */}
+          {(() => {
+            const deptWindows = windows.filter(w => w.department === selectedDept);
+            if (deptWindows.length === 0) return null;
+            return (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-800 text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
+                  <CalendarClock className="h-3.5 w-3.5 text-emerald-400" /> Booking Windows
+                </div>
+                <div className="divide-y divide-slate-800/60">
+                  {deptWindows.map(w => (
+                    <div key={w.id} className="px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {w.status === 'open' ? <Unlock className="h-4 w-4 text-emerald-300" /> : <Lock className="h-4 w-4 text-slate-600" />}
+                        <div>
+                          <span className="text-xs font-semibold text-slate-200">{w.title}</span>
+                          <span className="text-[10px] text-slate-500 block">{w.startDate} → {w.endDate} · {w.timeSlots.join(', ')} · {w.bookings.length} booked</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded border ${w.status === 'open' ? 'text-emerald-300 border-emerald-900/40 bg-emerald-950/30' : 'text-slate-500 border-slate-700/40 bg-slate-800/30'}`}>
+                          {w.status}
+                        </span>
+                        <button onClick={() => onUpdateWindow({ ...w, status: w.status === 'open' ? 'closed' : 'open' })}
+                          className="text-[10px] font-bold text-indigo-300 hover:text-indigo-200 transition">
+                          {w.status === 'open' ? 'Close' : 'Re-open'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Inspections list for this department */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
@@ -712,6 +798,78 @@ export default function InspectionTab({
                   className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 rounded-lg transition">Confirm Schedule</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===== BOOKING WINDOW MODAL ===== */}
+      {showBookingModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowBookingModal(false)}>
+          <div className="bg-slate-900 border border-emerald-600/30 rounded-xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 text-emerald-400" />
+                <h3 className="text-sm font-bold text-slate-100">Open Booking Window — {selectedDept}</h3>
+              </div>
+              <button onClick={() => setShowBookingModal(false)} className="text-slate-500 hover:text-slate-300"><X className="h-4 w-4" /></button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Selected Locations ({selectedLocIds.length})</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedLocIds.map(id => {
+                    const l = locations.find(x => x.id === id);
+                    return l ? (
+                      <span key={id} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-950/40 border border-emerald-900/40 text-[10px] font-semibold text-emerald-300">
+                        {l.building} Rm {l.roomNumber}
+                        <button onClick={() => toggleLocSelection(id)} className="text-emerald-500 hover:text-rose-300"><X className="h-2.5 w-2.5" /></button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Booking Opens *</label>
+                  <input type="date" value={bwStart} onChange={e => setBwStart(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Booking Closes *</label>
+                  <input type="date" value={bwEnd} onChange={e => setBwEnd(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Available Time Slots</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {bwSlots.map(s => (
+                    <span key={s} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-300">
+                      {s}
+                      <button onClick={() => setBwSlots(bwSlots.filter(x => x !== s))} className="text-slate-500 hover:text-rose-300"><X className="h-2.5 w-2.5" /></button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input type="time" value={bwCustomSlot} onChange={e => setBwCustomSlot(e.target.value)}
+                    className="bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none" />
+                  <button onClick={() => { if (bwCustomSlot && !bwSlots.includes(bwCustomSlot)) { setBwSlots([...bwSlots, bwCustomSlot].sort()); setBwCustomSlot(''); } }}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded font-semibold transition">Add</button>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-slate-500">Department users will be able to pick a date & time within this window for the selected locations.</p>
+
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => setShowBookingModal(false)}
+                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-2 rounded-lg transition">Cancel</button>
+                <button onClick={handleOpenBookingWindow} disabled={!bwStart || !bwEnd}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold py-2 rounded-lg transition">Open Window</button>
+              </div>
+            </div>
           </div>
         </div>
       )}

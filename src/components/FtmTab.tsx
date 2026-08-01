@@ -27,7 +27,7 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
   const allDepartments = [...departments].sort();
 
   // Get all FTMs
-  const ftms = persons.filter(p => p.role === 'Field Team Member' || p.role === 'FTM');
+  const ftms = persons.filter(p => p.role === 'Field Team Member');
 
   // --- Department Assignment logic ---
   const assignedDepts = new Set(ftms.flatMap(f => f.assignedDepartments || []));
@@ -97,7 +97,7 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
               <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-slate-400" /> Unassigned Departments
               </h2>
-              <p className="text-xs text-slate-400 mt-1">Drag departments to assign them to FTMs</p>
+              <p className="text-xs text-slate-400 mt-1">Drag departments to assign them to Field Team Members</p>
             </div>
             <div className="p-4 flex-1 overflow-y-auto space-y-2 custom-scrollbar">
               {unassignedDepartments.length === 0 ? (
@@ -119,7 +119,7 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
               <h2 className="text-base font-bold text-slate-200 flex items-center gap-2">
                 <Shield className="h-5 w-5 text-indigo-400" /> Field Team Members
               </h2>
-              <p className="text-xs text-slate-400 mt-1">Drop departments into an FTM's box. One department = one FTM.</p>
+              <p className="text-xs text-slate-400 mt-1">Drop departments into a member's box. One department = one Field Team Member.</p>
             </div>
             <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -132,7 +132,7 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-slate-200">{ftm.name}</h3>
-                        <p className="text-[10px] text-slate-400 uppercase tracking-wider">{ftm.title || 'FTM'}</p>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider">{ftm.title || 'Field Team Member'}</p>
                       </div>
                     </div>
                     <div className="flex-1 overflow-y-auto space-y-2 bg-slate-900/50 rounded-lg p-2 border border-slate-800 custom-scrollbar">
@@ -158,7 +158,7 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
                 {ftms.length === 0 && (
                   <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-800 rounded-xl">
                     <User className="h-10 w-10 mb-2 opacity-50" />
-                    <p className="text-sm">No FTMs found in directory.</p>
+                    <p className="text-sm">No Field Team Members found in directory.</p>
                   </div>
                 )}
               </div>
@@ -174,7 +174,7 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
             <h2 className="text-base font-bold text-slate-200 flex items-center gap-2 mb-1">
               <Target className="h-5 w-5 text-emerald-400" /> Focal Point Assignment
             </h2>
-            <p className="text-xs text-slate-400">Assign program focal points to FTMs. Multiple FTMs can share a focal point, and each FTM can have multiple focal points.</p>
+            <p className="text-xs text-slate-400">Assign program focal points to Field Team Members. Multiple members can share a focal point, and each member can have multiple focal points.</p>
           </div>
 
           {/* Focal point grid — each focal point shows its assigned FTMs */}
@@ -223,14 +223,14 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
           {ftms.length === 0 && (
             <div className="py-12 flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-800 rounded-xl">
               <User className="h-10 w-10 mb-2 opacity-50" />
-              <p className="text-sm">No FTMs found in directory.</p>
+              <p className="text-sm">No Field Team Members found in directory.</p>
             </div>
           )}
 
           {/* Per-FTM summary */}
           {ftms.length > 0 && (
             <div className="bg-slate-900/40 border border-slate-800/50 rounded-xl p-4">
-              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">FTM Focal Point Summary</h3>
+              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">Field Team Member Focal Point Summary</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {ftms.map(ftm => (
                   <div key={ftm.id} className="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3">

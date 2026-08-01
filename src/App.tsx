@@ -6,7 +6,6 @@ import {
   Radio,
   Zap,
   Flame,
-  Trash2,
   Droplets,
   Wind,
   LayoutDashboard,
@@ -51,7 +50,8 @@ import {
   IeqSample,
   Equipment,
   ExposureRecord,
-  InspectionWindow 
+  InspectionWindow,
+  OrgUnit 
 } from './types';
 
 import { 
@@ -73,7 +73,7 @@ import {
   INITIAL_IEQ_SAMPLES,
   INITIAL_EQUIPMENT,
   INITIAL_EXPOSURE_RECORDS,
-  INITIAL_DEPARTMENTS 
+  INITIAL_ORG_UNITS 
 } from './mockData';
 
 // Sub-component tabs
@@ -93,6 +93,19 @@ import EquipmentTab from './components/EquipmentTab';
 import ExposureTab from './components/ExposureTab';
 import InspectionBookingTab from './components/InspectionBookingTab';
 
+const ROLE_LABELS: Record<string, string> = {
+  superadmin: 'Superadmin',
+  admin: 'Admin',
+  field_team_member: 'Field Team Member',
+  inspector: 'Inspector',
+  radiation_officer: 'Radiation Officer',
+  operator: 'Operator',
+  facilities: 'Facilities',
+  PI: 'PI',
+  Contact: 'Contact'
+};
+const roleLabel = (role: string) => ROLE_LABELS[role] || role;
+
 export default function App() {
   // Portal view: landing → portal (HSEO staff) or booking (department users)
   const [portalView, setPortalView] = useState<'landing' | 'portal' | 'booking'>('landing');
@@ -109,7 +122,7 @@ export default function App() {
   const [hygieneOpen, setHygieneOpen] = useState(true);
 
   // States
-  const [currentUser, setCurrentUser] = useState<User>(SIMULATED_USERS.find(u => ['superadmin', 'admin', 'FTM', 'inspector'].includes(u.role)) || SIMULATED_USERS[0]);
+  const [currentUser, setCurrentUser] = useState<User>(SIMULATED_USERS.find(u => ['superadmin', 'admin', 'field_team_member', 'inspector'].includes(u.role)) || SIMULATED_USERS[0]);
   const [selectedDirectoryPersonId, setSelectedDirectoryPersonId] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
@@ -129,7 +142,7 @@ export default function App() {
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
   const [exposureRecords, setExposureRecords] = useState<ExposureRecord[]>([]);
   const [inspectionWindows, setInspectionWindows] = useState<InspectionWindow[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
+  const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
 
   // Local notifications simulated list
   const [notifications, setNotifications] = useState<string[]>([
@@ -157,7 +170,24 @@ export default function App() {
         setIeqComplaints(parsed.ieqComplaints || INITIAL_IEQ_COMPLAINTS);
         setIeqParameters(parsed.ieqParameters || INITIAL_IEQ_PARAMETERS);
         setIeqSamples(parsed.ieqSamples || INITIAL_IEQ_SAMPLES);
-        setPersons(parsed.persons || SIMULATED_PERSONS);
+        // Migrate old department codes (e.g. 'PHYS') -> full org unit names (e.g. 'Department of Physics')
+        const codeToName: Record<string, string> = {};
+        INITIAL_ORG_UNITS.forEach(u => { if (u.code) codeToName[u.code] = u.name; });
+        const normalizeDept = (d?: string) => (d && codeToName[d]) ? codeToName[d] : d;
+        // Field Team Member identities always reflect the current mock data — this fixes
+        // stale placeholder names (e.g. "FTM Person 1") lingering in old saved state.
+        const mockFtmById: Record<string, { name: string; title?: string }> = {};
+        SIMULATED_PERSONS.filter(p => p.role === 'Field Team Member').forEach(p => { mockFtmById[p.id] = { name: p.name, title: p.title }; });
+        const migratedPersons = (parsed.persons || SIMULATED_PERSONS).map((p: any) => {
+          const mockFtm = mockFtmById[p.id];
+          return {
+            ...p,
+            ...(mockFtm ? { name: mockFtm.name, title: mockFtm.title } : {}),
+            department: normalizeDept(p.department),
+            assignedDepartments: Array.isArray(p.assignedDepartments) ? p.assignedDepartments.map(normalizeDept) : p.assignedDepartments
+          };
+        });
+        setPersons(migratedPersons);
         // Migrate old contactPersonIds -> piDelegateIds for localStorage data
         const migratedLocations = (parsed.locations || SIMULATED_LOCATIONS).map((loc: any) => ({
           ...loc,
@@ -168,7 +198,7 @@ export default function App() {
         setEquipmentList(parsed.equipmentList || INITIAL_EQUIPMENT);
         setExposureRecords(parsed.exposureRecords || INITIAL_EXPOSURE_RECORDS);
         setInspectionWindows(parsed.inspectionWindows || []);
-        setDepartments(parsed.departments || INITIAL_DEPARTMENTS);
+        setOrgUnits(parsed.orgUnits || INITIAL_ORG_UNITS);
         
         const storedUser = localStorage.getItem('HSEO_PORTAL_CURRENT_USER');
         if (storedUser) {
@@ -195,7 +225,7 @@ export default function App() {
         setEquipmentList(INITIAL_EQUIPMENT);
         setExposureRecords(INITIAL_EXPOSURE_RECORDS);
         setInspectionWindows([]);
-        setDepartments(INITIAL_DEPARTMENTS);
+        setOrgUnits(INITIAL_ORG_UNITS);
       }
     } catch (e) {
       console.error("Error reading LocalStorage state: ", e);
@@ -222,7 +252,7 @@ export default function App() {
     equipmentList: Equipment[];
     exposureRecords: ExposureRecord[];
     inspectionWindows: InspectionWindow[];
-    departments: string[];
+    orgUnits: OrgUnit[];
   }>) => {
     try {
       const currentState = {
@@ -244,7 +274,7 @@ export default function App() {
         equipmentList: updated.equipmentList ?? equipmentList,
         exposureRecords: updated.exposureRecords ?? exposureRecords,
         inspectionWindows: updated.inspectionWindows ?? inspectionWindows,
-        departments: updated.departments ?? departments
+        orgUnits: updated.orgUnits ?? orgUnits
       };
       localStorage.setItem('HSEO_PORTAL_STATE_V1', JSON.stringify(currentState));
     } catch (e) {
@@ -258,9 +288,9 @@ export default function App() {
     saveState({ persons: nextPersons });
   };
 
-  const handleUpdateDepartments = (next: string[]) => {
-    setDepartments(next);
-    saveState({ departments: next });
+  const handleUpdateOrgUnits = (next: OrgUnit[]) => {
+    setOrgUnits(next);
+    saveState({ orgUnits: next });
   };
 
   const handleUpdateLocation = (updatedLoc: Location) => {
@@ -705,8 +735,10 @@ export default function App() {
   const totalUrgentAlerts = notifications.length;
 
   // HSEO staff roles allowed in the portal
-  const HSEO_ROLES = ['superadmin', 'admin', 'FTM', 'inspector'];
+  const HSEO_ROLES = ['superadmin', 'admin', 'field_team_member', 'inspector'];
   const hseoUsers = SIMULATED_USERS.filter(u => HSEO_ROLES.includes(u.role));
+  const deptUsers = SIMULATED_USERS.filter(u => !HSEO_ROLES.includes(u.role));
+  const isHseoUser = HSEO_ROLES.includes(currentUser.role);
 
   // --- LANDING PAGE ---
   if (portalView === 'landing') {
@@ -721,9 +753,35 @@ export default function App() {
             <p className="text-sm text-slate-400">Health, Safety & Environment Office</p>
           </div>
 
+          {/* User role selector */}
+          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-2 text-left">
+            <label className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Simulate User Role</label>
+            <select
+              value={currentUser.id}
+              onChange={(e) => handleUserSwitch(e.target.value)}
+              className="w-full bg-slate-800/80 hover:bg-slate-800 text-slate-200 text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer font-semibold"
+            >
+              <optgroup label="HSEO Staff">
+                {hseoUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({roleLabel(user.role)})
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Department Users">
+                {deptUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({roleLabel(user.role)})
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            <p className="text-[10px] text-slate-600">{currentUser.title}</p>
+          </div>
+
           <div className="space-y-3">
-            <button onClick={() => setPortalView('portal')}
-              className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20">
+            <button onClick={() => setPortalView('portal')} disabled={!isHseoUser}
+              className={`w-full py-3.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 ${isHseoUser ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-800/40 text-slate-600 border border-slate-800 cursor-not-allowed'}`}>
               <Lock className="h-4 w-4" /> Login to HSEO Portal
             </button>
             <button onClick={() => setPortalView('booking')}
@@ -732,7 +790,7 @@ export default function App() {
             </button>
           </div>
 
-          <p className="text-[10px] text-slate-600">HSEO staff only. Department users please use “Book an Inspection”.</p>
+          <p className="text-[10px] text-slate-600">{isHseoUser ? 'HSEO staff can access the portal and booking.' : 'Department users: please use “Book an Inspection”.'}</p>
         </div>
       </div>
     );
@@ -759,9 +817,9 @@ export default function App() {
             windows={inspectionWindows}
             locations={locations}
             persons={persons}
-            onAddWindow={handleAddWindow}
             onUpdateWindow={handleUpdateWindow}
             onAddInspection={handleAddInspection}
+            standalone
           />
         </main>
       </div>
@@ -899,10 +957,6 @@ export default function App() {
                 className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'inspections' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                 <ClipboardCheck className="h-3.5 w-3.5" />
               </button>
-              <button onClick={() => { setActiveTab('booking'); setMobileMenuOpen(false); }} title="Booking Windows"
-                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'booking' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
-                <CalendarClock className="h-3.5 w-3.5" />
-              </button>
               <button onClick={() => { setActiveTab('radiation'); setMobileMenuOpen(false); }} title="Radiation"
                 className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'radiation' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                 <Radio className="h-3.5 w-3.5" />
@@ -927,10 +981,6 @@ export default function App() {
                   <button onClick={() => { setActiveTab('inspections'); setMobileMenuOpen(false); }}
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'inspections' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                     <ClipboardCheck className="h-3.5 w-3.5 shrink-0 text-indigo-400" /><span>Inspection</span>
-                  </button>
-                  <button onClick={() => { setActiveTab('booking'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'booking' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
-                    <CalendarClock className="h-3.5 w-3.5 shrink-0 text-emerald-400" /><span>Booking Windows</span>
                   </button>
                   <button onClick={() => { setActiveTab('radiation'); setMobileMenuOpen(false); }}
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'radiation' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
@@ -1093,26 +1143,14 @@ export default function App() {
           {/* User selector, Notification alert, Settings */}
           <div className="flex items-center gap-4 relative">
             
-            {/* Active Simulation Role Selector */}
+            {/* Active User Display */}
             <div className="flex items-center gap-2">
               <div className="text-right hidden sm:block">
-                <span className="text-[10px] text-slate-500 uppercase tracking-widest block font-bold">Simulate User Role</span>
+                <span className="text-[10px] text-slate-500 uppercase tracking-widest block font-bold">{roleLabel(currentUser.role)}</span>
                 <span className="text-xs font-bold text-indigo-400 block mt-0.5">{currentUser.name}</span>
               </div>
-              
-              <div className="relative">
-                <select 
-                  value={currentUser.id}
-                  onChange={(e) => handleUserSwitch(e.target.value)}
-                  className="bg-slate-800/80 hover:bg-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer font-semibold appearance-none pr-8"
-                >
-                  {hseoUsers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name.split(' ')[0]} ({user.role.toUpperCase()})
-                    </option>
-                  ))}
-                </select>
-                <Users className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${currentUser.avatarColor}`}>
+                {currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
               </div>
             </div>
 
@@ -1183,21 +1221,12 @@ export default function App() {
               inspections={inspections}
               locations={locations}
               persons={persons}
+              windows={inspectionWindows}
               onAddInspection={handleAddInspection}
               onUpdateFindings={handleUpdateFindings}
               onUpdateInspection={handleUpdateInspection}
-            />
-          )}
-
-          {activeTab === 'booking' && (
-            <InspectionBookingTab
-              currentUser={currentUser}
-              windows={inspectionWindows}
-              locations={locations}
-              persons={persons}
               onAddWindow={handleAddWindow}
               onUpdateWindow={handleUpdateWindow}
-              onAddInspection={handleAddInspection}
             />
           )}
 
@@ -1285,6 +1314,7 @@ export default function App() {
               waterLogs={waterLogs}
               ieqLogs={ieqLogs}
               ieqComplaints={ieqComplaints}
+              departments={orgUnits.filter(u => u.type === 'department').map(u => u.name)}
               onAddLocation={handleAddLocation}
               onAddPerson={handleAddPerson}
               onUpdateLocation={handleUpdateLocation}
@@ -1323,15 +1353,16 @@ export default function App() {
           {activeTab === 'ftm' && (
             <FtmTab 
               persons={persons}
-              departments={departments}
+              departments={orgUnits.filter(u => u.type === 'department').map(u => u.name)}
               onUpdatePerson={handleUpdatePerson}
             />
           )}
 
           {activeTab === 'departments' && (
             <DepartmentTab
-              departments={departments}
-              onUpdateDepartments={handleUpdateDepartments}
+              orgUnits={orgUnits}
+              locations={locations}
+              onUpdateOrgUnits={handleUpdateOrgUnits}
             />
           )}
 

@@ -1,4 +1,4 @@
-export type Role = 'superadmin' | 'admin' | 'inspector' | 'radiation_officer' | 'operator' | 'facilities' | 'PI' | 'Contact' | 'FTM';
+export type Role = 'superadmin' | 'admin' | 'inspector' | 'radiation_officer' | 'operator' | 'facilities' | 'PI' | 'Contact' | 'field_team_member';
 
 export interface User {
   id: string;
@@ -12,7 +12,7 @@ export interface User {
 export interface Person {
   id: string;
   name: string;
-  role: 'Principal Investigator (PI)' | 'Staff' | 'Student' | 'Field Team Member' | 'HSEO Management' | 'Viewer' | 'PI' | 'Contact' | 'Officer' | 'FTM' | 'HSEO management' | 'Superadmin';
+  role: 'Principal Investigator (PI)' | 'Staff' | 'Student' | 'Field Team Member' | 'HSEO Management' | 'Viewer' | 'PI' | 'Contact' | 'Officer' | 'HSEO management' | 'Superadmin';
   department: string;
   assignedDepartments?: string[]; // for FTMs
   assignedFocalPoints?: string[]; // for FTMs — program focal points
@@ -28,6 +28,14 @@ export interface Building {
   id: string;
   code: string;
   name: string;
+}
+
+export interface OrgUnit {
+  id: string;
+  name: string;
+  code?: string; // short form e.g. "CHEM", "PHYS"
+  type: 'vp' | 'school' | 'department';
+  parentId?: string; // references parent OrgUnit id
 }
 
 export interface Location {
@@ -94,10 +102,10 @@ export interface InspectionBooking {
   id: string;
   date: string;
   time: string;
-  locationId: string;
+  locationIds: string[]; // one or more locations visited in this single time slot
   bookedBy: string; // person id
   bookedByName: string;
-  inspectionId?: string; // linked inspection record once created
+  inspectionIds?: string[]; // linked inspection records (one per location)
 }
 
 export interface InspectionWindow {

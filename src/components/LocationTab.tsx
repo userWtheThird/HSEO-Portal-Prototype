@@ -2,25 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   MapPin, 
   User, 
-  Users, 
-  Phone, 
-  Mail, 
   Building as BuildingIcon, 
   Plus, 
   Search, 
   Shield, 
-  ArrowRight, 
-  Bookmark,
-  Briefcase,
   Zap,
   Radio,
   Flame,
   Trash2,
-  Droplets,
-  Wind,
   ClipboardCheck,
   X,
-  FileText,
   Edit2,
   Download,
   Upload
@@ -53,6 +44,7 @@ interface LocationTabProps {
   waterLogs: WaterLog[];
   ieqLogs: IeqLog[];
   ieqComplaints: IeqComplaint[];
+  departments: string[];
   onAddLocation: (loc: Location) => void;
   onAddPerson: (pers: Person) => void;
   onUpdateLocation: (loc: Location) => void;
@@ -75,6 +67,7 @@ export default function LocationTab({
   waterLogs,
   ieqLogs,
   ieqComplaints,
+  departments,
   onAddLocation,
   onAddPerson,
   onUpdateLocation,
@@ -698,14 +691,15 @@ export default function LocationTab({
                 </div>
                 <div>
                   <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Department *</label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={newLocDept}
                     onChange={(e) => setNewLocDept(e.target.value)}
-                    placeholder="e.g. Chemistry"
                     className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
-                  />
+                  >
+                    <option value="">Select department…</option>
+                    {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Status *</label>
@@ -985,13 +979,16 @@ export default function LocationTab({
                     </div>
                     <div>
                       <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Department *</label>
-                      <input
-                        type="text"
+                      <select
                         required
                         value={editLocDept}
                         onChange={(e) => setEditLocDept(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
-                      />
+                      >
+                        <option value="">Select department…</option>
+                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                        {editLocDept && !departments.includes(editLocDept) && <option value={editLocDept}>{editLocDept}</option>}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Status *</label>
@@ -1168,7 +1165,7 @@ export default function LocationTab({
                     <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider">HSEO Contact (Field Team):</span>
                     <div className="grid grid-cols-1 gap-1 pl-1">
                       {persons.filter(p => 
-                        (p.role === 'Field Team Member' || p.role === 'FTM') && 
+                        (p.role === 'Field Team Member') && 
                         p.assignedDepartments?.includes(selectedLoc.department)
                       ).map(officer => (
                         <div 
@@ -1186,10 +1183,10 @@ export default function LocationTab({
                         </div>
                       ))}
                       {persons.filter(p => 
-                        (p.role === 'Field Team Member' || p.role === 'FTM') && 
+                        (p.role === 'Field Team Member') && 
                         p.assignedDepartments?.includes(selectedLoc.department)
                       ).length === 0 && (
-                        <span className="text-slate-500 italic block text-[10px] pl-1">No FTM assigned to this department</span>
+                        <span className="text-slate-500 italic block text-[10px] pl-1">No Field Team Member assigned to this department</span>
                       )}
                     </div>
                   </div>

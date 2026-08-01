@@ -8,19 +8,11 @@ import {
   Building as BuildingIcon, 
   Plus, 
   Search, 
-  Shield, 
-  ArrowRight, 
-  Bookmark,
-  Briefcase,
   Zap,
   Radio,
   Flame,
-  Trash2,
-  Droplets,
-  Wind,
   ClipboardCheck,
   X,
-  FileText,
   Download,
   Upload
 } from 'lucide-react';
@@ -190,7 +182,7 @@ export default function DirectoryTab({
 
   // New person form state
   const [newPersName, setNewPersName] = useState('');
-  const [newPersRole, setNewPersRole] = useState<'PI' | 'Staff' | 'Contact' | 'Officer' | 'FTM' | 'HSEO management'>('Staff');
+  const [newPersRole, setNewPersRole] = useState<'PI' | 'Staff' | 'Contact' | 'Officer' | 'Field Team Member' | 'HSEO management'>('Staff');
   const [newPersDept, setNewPersDept] = useState('');
   const [newPersEmail, setNewPersEmail] = useState('');
   const [newPersPhone, setNewPersPhone] = useState('');
@@ -201,7 +193,7 @@ export default function DirectoryTab({
   // Edit person form state
   const [isEditingPerson, setIsEditingPerson] = useState(false);
   const [editPersName, setEditPersName] = useState('');
-  const [editPersRole, setEditPersRole] = useState<'PI' | 'Staff' | 'Contact' | 'Officer' | 'FTM' | 'HSEO management'>('Staff');
+  const [editPersRole, setEditPersRole] = useState<'PI' | 'Staff' | 'Contact' | 'Officer' | 'Field Team Member' | 'HSEO management'>('Staff');
   const [editPersDept, setEditPersDept] = useState('');
   const [editPersEmail, setEditPersEmail] = useState('');
   const [editPersPhone, setEditPersPhone] = useState('');
@@ -388,7 +380,7 @@ export default function DirectoryTab({
       const matchesRole = filterRole === 'All' || 
         p.role === filterRole || 
         (filterRole === 'Principal Investigator (PI)' && p.role === 'PI') ||
-        (filterRole === 'Field Team Member' && p.role === 'FTM') ||
+        (filterRole === 'Field Team Member' && p.role === 'Field Team Member') ||
         (filterRole === 'HSEO Management' && (p.role === 'Officer' || p.role === 'HSEO management'));
 
       // 3. Department filter
@@ -819,15 +811,13 @@ export default function DirectoryTab({
                           </td>
                           <td className="px-4 py-3">
                             <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                              pers.role === 'Principal Investigator (PI)' || pers.role === 'PI'
-                                ? 'bg-amber-950/40 text-amber-500 border-amber-900/50' 
-                                : pers.role === 'HSEO Management' || pers.role === 'Officer' || pers.role === 'HSEO management'
-                                ? 'bg-indigo-950/40 text-indigo-400 border-indigo-900/50'
-                                : pers.role === 'Field Team Member' || pers.role === 'FTM'
-                                ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/50'
+                              pers.role === 'HSEO Management' || pers.role === 'Officer' || pers.role === 'HSEO management'
+                                ? 'bg-slate-700 text-white border-slate-600'
+                                : pers.role === 'Field Team Member'
+                                ? 'bg-white text-blue-600 border-blue-200'
                                 : 'bg-slate-950 text-slate-400 border-slate-800'
                             }`}>
-                              {pers.role === 'PI' ? 'Principal Investigator (PI)' : pers.role === 'FTM' ? 'Field Team Member' : pers.role}
+                              {pers.role === 'PI' ? 'Principal Investigator (PI)' : pers.role}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-slate-400">{pers.department}</td>
@@ -850,10 +840,10 @@ export default function DirectoryTab({
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold border ${
                               pers.status === 'Inactive'
-                                ? 'bg-rose-950/40 text-rose-500 border-rose-900/50'
-                                : 'bg-emerald-950/40 text-emerald-500 border-emerald-900/50'
+                                ? 'bg-slate-950 text-slate-500 border-slate-800 font-medium'
+                                : 'bg-emerald-950/40 text-emerald-400 border-emerald-900/30 font-extrabold'
                             }`}>
                               {pers.status === 'Inactive' ? 'Inactive' : 'Active'}
                             </span>

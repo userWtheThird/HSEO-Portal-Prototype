@@ -16,7 +16,8 @@ import {
   IeqParameter,
   IeqSample,
   Equipment,
-  ExposureRecord 
+  ExposureRecord,
+  OrgUnit 
 } from './types';
 
 export const SIMULATED_USERS: User[] = [
@@ -30,9 +31,9 @@ export const SIMULATED_USERS: User[] = [
   },
   {
     id: 'user_ftm_1',
-    name: 'WOO Chun Fai',
+    name: 'John WONG',
     email: 'wcf@hseo-portal.net',
-    role: 'FTM',
+    role: 'field_team_member',
     avatarColor: 'bg-teal-600 text-white',
     title: 'Field Team Member'
   },
@@ -83,6 +84,38 @@ export const SIMULATED_USERS: User[] = [
     role: 'superadmin',
     avatarColor: 'bg-violet-600 text-white',
     title: 'Servant'
+  },
+  {
+    id: 'user_chem_gong',
+    name: 'Chemist GONG',
+    email: 'chem1@hseo-portal.net',
+    role: 'Contact',
+    avatarColor: 'bg-orange-600 text-white',
+    title: 'Department of Chemistry — Staff'
+  },
+  {
+    id: 'user_lifs_yan',
+    name: 'Marcus YAN',
+    email: 'lifs1@hseo-portal.net',
+    role: 'Contact',
+    avatarColor: 'bg-lime-600 text-white',
+    title: 'Division of Life Science — Staff'
+  },
+  {
+    id: 'user_okt_james',
+    name: 'James Rodriguez',
+    email: 'james.rodriguez@hseo-portal.net',
+    role: 'Contact',
+    avatarColor: 'bg-rose-600 text-white',
+    title: 'OKT — Staff'
+  },
+  {
+    id: 'user_phys_vance',
+    name: 'Robert Vance',
+    email: 'robert.vance@hseo-portal.net',
+    role: 'Contact',
+    avatarColor: 'bg-sky-600 text-white',
+    title: 'Department of Physics — Research Associate'
   }
 ];
 
@@ -90,53 +123,53 @@ export const SIMULATED_USERS: User[] = [
 export const SIMULATED_PERSONS: Person[] = [
   {
     id: 'pers_ftm_1',
-    name: 'FTM Person 1',
+    name: 'John WONG',
     role: 'Field Team Member',
     department: 'HSEO',
-    assignedDepartments: ['PHYS'],
+    assignedDepartments: ['Department of Physics'],
     assignedFocalPoints: ['Radiation', 'Laser', 'UAV'],
     email: 'ftm1@hseo-portal.net',
     phone: '+1 (555) 000-0001',
-    title: 'Field Team Member 1'
+    title: 'Field Team Member'
   },
   {
     id: 'pers_ftm_2',
-    name: 'FTM Person 2',
+    name: 'Vanessa CHENG',
     role: 'Field Team Member',
     department: 'HSEO',
     assignedDepartments: ['Department of Chemistry'],
     assignedFocalPoints: ['Inspection', 'Hot Work Permits', 'Confined Space Entry'],
     email: 'ftm2@hseo-portal.net',
     phone: '+1 (555) 000-0002',
-    title: 'Field Team Member 2'
+    title: 'Field Team Member'
   },
   {
     id: 'pers_ftm_3',
-    name: 'FTM Person 3',
+    name: 'Marcus LI',
     role: 'Field Team Member',
     department: 'HSEO',
     assignedDepartments: ['OKT'],
     assignedFocalPoints: ['Exposure Monitoring', 'Water Sanitation', 'IEQ'],
     email: 'ftm3@hseo-portal.net',
     phone: '+1 (555) 000-0003',
-    title: 'Field Team Member 3'
+    title: 'Field Team Member'
   },
   {
     id: 'pers_ftm_4',
-    name: 'FTM Person 4',
+    name: 'Stephanie YIP',
     role: 'Field Team Member',
     department: 'HSEO',
-    assignedDepartments: ['LIFS'],
+    assignedDepartments: ['Division of Life Science'],
     assignedFocalPoints: ['Inspection', 'Radiation', 'Water Sanitation'],
     email: 'ftm4@hseo-portal.net',
     phone: '+1 (555) 000-0004',
-    title: 'Field Team Member 4'
+    title: 'Field Team Member'
   },
   {
     id: 'pers_lifs_1',
     name: 'Marcus YAN',
     role: 'Staff',
-    department: 'LIFS',
+    department: 'Division of Life Science',
     email: 'lifs1@hseo-portal.net',
     phone: '+1 (555) 000-0005',
     title: 'STO'
@@ -145,7 +178,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_lifs_2',
     name: 'Ting XIE',
     role: 'Principal Investigator (PI)',
-    department: 'LIFS',
+    department: 'Division of Life Science',
     email: 'lifs2@hseo-portal.net',
     phone: '+1 (555) 000-0006',
     title: 'Professor'
@@ -154,7 +187,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_lifs_3',
     name: 'Momo WONG',
     role: 'Staff',
-    department: 'LIFS',
+    department: 'Division of Life Science',
     email: 'ftm7@hseo-portal.net',
     phone: '+1 (555) 000-0007',
     title: 'TO'
@@ -163,7 +196,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_phys_1',
     name: 'Laserman TAN',
     role: 'Principal Investigator (PI)',
-    department: 'PHYS',
+    department: 'Department of Physics',
     email: 'phys1@hseo-portal.net',
     phone: '+1 (555) 000-0008',
     title: 'Professor'
@@ -172,7 +205,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_phys_2',
     name: 'TK Cheung',
     role: 'Staff',
-    department: 'PHYS',
+    department: 'Department of Physics',
     email: 'phys2@hseo-portal.net',
     phone: '+1 (555) 000-0009',
     title: 'Manager'
@@ -181,7 +214,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_phys_3',
     name: 'Someone LING',
     role: 'Staff',
-    department: 'PHYS',
+    department: 'Department of Physics',
     email: 'phys3@hseo-portal.net',
     phone: '+1 (555) 000-0010',
     title: 'TO'
@@ -244,7 +277,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_robert',
     name: 'Robert Vance',
     role: 'Staff',
-    department: 'PHYS',
+    department: 'Department of Physics',
     email: 'robert.vance@hseo-portal.net',
     phone: '+1 (555) 019-7811',
     title: 'Research Associate'
@@ -253,7 +286,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_john',
     name: 'John Thompson',
     role: 'Staff',
-    department: 'PHYS',
+    department: 'Department of Physics',
     email: 'john.thompson@hseo-portal.net',
     phone: '+1 (555) 019-8900',
     title: 'Office Administrator'
@@ -281,14 +314,26 @@ export const INITIAL_BUILDINGS: Building[] = [
   { id: 'bld_5', code: 'CML', name: 'Costal Marine Laboratory' }
 ];
 
-export const INITIAL_DEPARTMENTS: string[] = [
-  'Department of Chemistry',
-  'Department of Physics',
-  'Department of Biology',
-  'Campus Management Office',
-  "President's Office",
-  'OKT',
-  'LIFS'
+export const INITIAL_ORG_UNITS: OrgUnit[] = [
+  // VP level
+  { id: 'org_vprd', name: 'VPRD (Vice President of Research and Development)', type: 'vp' },
+  { id: 'org_vpab', name: 'VPAB (Vice President of Administration and Business)', type: 'vp' },
+  // School level
+  { id: 'org_sci', name: 'School of Science', code: 'SCI', type: 'school', parentId: 'org_vprd' },
+  { id: 'org_eng', name: 'School of Engineering', code: 'ENG', type: 'school', parentId: 'org_vprd' },
+  // Department level — Science
+  { id: 'org_chem', name: 'Department of Chemistry', code: 'CHEM', type: 'department', parentId: 'org_sci' },
+  { id: 'org_phys', name: 'Department of Physics', code: 'PHYS', type: 'department', parentId: 'org_sci' },
+  { id: 'org_lifs', name: 'Division of Life Science', code: 'LIFS', type: 'department', parentId: 'org_sci' },
+  { id: 'org_math', name: 'Department of Mathematics', code: 'MATH', type: 'department', parentId: 'org_sci' },
+  // Department level — Engineering
+  { id: 'org_mae', name: 'Department of Mechanical Engineering', code: 'MAE', type: 'department', parentId: 'org_eng' },
+  { id: 'org_ece', name: 'Department of Electronic & Computer Engineering', code: 'ECE', type: 'department', parentId: 'org_eng' },
+  { id: 'org_cbe', name: 'Department of Chemical & Biological Engineering', code: 'CBE', type: 'department', parentId: 'org_eng' },
+  // Department level — VPAB
+  { id: 'org_cmo', name: 'Campus Management Office', code: 'CMO', type: 'department', parentId: 'org_vpab' },
+  { id: 'org_pres', name: "President's Office", code: 'PRES', type: 'department', parentId: 'org_vpab' },
+  { id: 'org_okt', name: 'OKT', code: 'OKT', type: 'department', parentId: 'org_vpab' }
 ];
 
 export const SIMULATED_LOCATIONS: Location[] = [
