@@ -34,7 +34,7 @@ export interface OrgUnit {
   id: string;
   name: string;
   code?: string; // short form e.g. "CHEM", "PHYS"
-  type: 'vp' | 'school' | 'department';
+  type: 'vp' | 'school' | 'department' | 'office' | 'facility' | 'institute' | 'subsidiary' | 'other';
   parentId?: string; // references parent OrgUnit id
 }
 

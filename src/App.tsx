@@ -110,6 +110,24 @@ export default function App() {
   // Portal view: landing → portal (HSEO staff) or booking (department users)
   const [portalView, setPortalView] = useState<'landing' | 'portal' | 'booking'>('landing');
 
+  // Passcode gate
+  const PASSCODE = 'FishermansFriend';
+  const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem('hseo_auth') === 'true');
+  const [passcodeInput, setPasscodeInput] = useState('');
+  const [passcodeError, setPasscodeError] = useState(false);
+
+  const handlePasscodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passcodeInput === PASSCODE) {
+      sessionStorage.setItem('hseo_auth', 'true');
+      setAuthenticated(true);
+      setPasscodeError(false);
+    } else {
+      setPasscodeError(true);
+      setPasscodeInput('');
+    }
+  };
+
   // Navigation active tab
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
@@ -170,10 +188,13 @@ export default function App() {
         setIeqComplaints(parsed.ieqComplaints || INITIAL_IEQ_COMPLAINTS);
         setIeqParameters(parsed.ieqParameters || INITIAL_IEQ_PARAMETERS);
         setIeqSamples(parsed.ieqSamples || INITIAL_IEQ_SAMPLES);
-        // Migrate old department codes (e.g. 'PHYS') -> full org unit names (e.g. 'Department of Physics')
-        const codeToName: Record<string, string> = {};
-        INITIAL_ORG_UNITS.forEach(u => { if (u.code) codeToName[u.code] = u.name; });
-        const normalizeDept = (d?: string) => (d && codeToName[d]) ? codeToName[d] : d;
+        // Migrate legacy full department names (e.g. 'Department of Physics') -> codes (e.g. 'PHYS')
+        const nameToCode: Record<string, string> = {};
+        INITIAL_ORG_UNITS.forEach(u => { if (u.code) nameToCode[u.name.toLowerCase()] = u.code; });
+        const normalizeDept = (d?: string) => {
+          if (!d) return d;
+          return nameToCode[d.toLowerCase()] || d;
+        };
         // Field Team Member identities always reflect the current mock data — this fixes
         // stale placeholder names (e.g. "FTM Person 1") lingering in old saved state.
         const mockFtmById: Record<string, { name: string; title?: string }> = {};
@@ -739,6 +760,40 @@ export default function App() {
   const hseoUsers = SIMULATED_USERS.filter(u => HSEO_ROLES.includes(u.role));
   const deptUsers = SIMULATED_USERS.filter(u => !HSEO_ROLES.includes(u.role));
   const isHseoUser = HSEO_ROLES.includes(currentUser.role);
+
+  // --- PASSCODE GATE ---
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm space-y-6 text-center">
+          <div className="space-y-3">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-800 text-slate-400 mx-auto">
+              <Lock className="h-8 w-8" />
+            </div>
+            <h1 className="text-xl font-extrabold text-slate-100">HSEO Portal</h1>
+            <p className="text-xs text-slate-500">Enter passcode to continue</p>
+          </div>
+          <form onSubmit={handlePasscodeSubmit} className="space-y-3">
+            <input
+              type="password"
+              value={passcodeInput}
+              onChange={e => { setPasscodeInput(e.target.value); setPasscodeError(false); }}
+              placeholder="Passcode"
+              autoFocus
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-center text-slate-100 placeholder-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/30 transition"
+            />
+            {passcodeError && <p className="text-xs text-red-400">Incorrect passcode. Please try again.</p>}
+            <button
+              type="submit"
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg py-3 transition cursor-pointer"
+            >
+              Unlock
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   // --- LANDING PAGE ---
   if (portalView === 'landing') {

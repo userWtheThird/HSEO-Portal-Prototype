@@ -1356,8 +1356,8 @@ export default function WaterTab({
                               <td className="px-4 py-3 text-center">
                                 <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase font-bold border ${
                                   isPass
-                                    ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/30'
-                                    : 'bg-rose-950/40 text-rose-400 border-rose-900/30'
+                                    ? 'bg-slate-900/80 text-emerald-300 border-emerald-500/30'
+                                    : 'bg-slate-900/80 text-rose-300 border-rose-500/30'
                                 }`}>
                                   {log.passFailed || (log.status === 'pass' ? 'Pass' : 'Failed')}
                                 </span>
@@ -1405,8 +1405,8 @@ export default function WaterTab({
                         <div className="flex items-center gap-3">
                           <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs uppercase font-bold border ${
                             isPass
-                              ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/30'
-                              : 'bg-rose-950/40 text-rose-400 border-rose-900/30'
+                              ? 'bg-slate-900/80 text-emerald-300 border-emerald-500/30'
+                              : 'bg-slate-900/80 text-rose-300 border-rose-500/30'
                           }`}>
                             {log.passFailed || 'N/A'}
                           </span>
@@ -1449,8 +1449,8 @@ export default function WaterTab({
                       <div className="flex items-center gap-3">
                         <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs uppercase font-bold border ${
                           isPass
-                            ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/30'
-                            : 'bg-rose-950/40 text-rose-400 border-rose-900/30'
+                            ? 'bg-slate-900/80 text-emerald-300 border-emerald-500/30'
+                            : 'bg-slate-900/80 text-rose-300 border-rose-500/30'
                         }`}>
                           {log.passFailed || (log.status === 'pass' ? 'Pass' : 'Failed')}
                         </span>

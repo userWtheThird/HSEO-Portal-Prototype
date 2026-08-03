@@ -69,13 +69,13 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  scheduled: 'bg-sky-950/40 text-sky-300 border-sky-900/30',
-  ready_to_go: 'bg-emerald-950/40 text-emerald-300 border-emerald-900/30',
-  drafting_report: 'bg-amber-950/40 text-amber-300 border-amber-900/30',
-  supervisor_review: 'bg-purple-950/40 text-purple-400 border-purple-900/30',
-  issued: 'bg-indigo-950/40 text-indigo-400 border-indigo-900/30',
-  pending_rectification: 'bg-rose-950/40 text-rose-300 border-rose-900/30',
-  closed: 'bg-slate-800/60 text-slate-400 border-slate-700/30'
+  scheduled: 'bg-slate-900/80 text-sky-300 border-sky-500/30',
+  ready_to_go: 'bg-slate-900/80 text-emerald-300 border-emerald-500/30',
+  drafting_report: 'bg-slate-900/80 text-amber-300 border-amber-500/30',
+  supervisor_review: 'bg-slate-900/80 text-purple-300 border-purple-500/30',
+  issued: 'bg-slate-900/80 text-indigo-300 border-indigo-500/30',
+  pending_rectification: 'bg-slate-900/80 text-rose-300 border-rose-500/30',
+  closed: 'bg-slate-900/80 text-slate-400 border-slate-600/30'
 };
 
 export default function InspectionTab({
@@ -506,13 +506,13 @@ export default function InspectionTab({
                       <div>
                         <span className="text-xs font-semibold text-slate-200">{loc.building} Rm {loc.roomNumber}</span>
                         <span className="text-[10px] text-slate-500 ml-2">{loc.roomNature}</span>
-                        {!isActive && <span className="text-[9px] font-bold uppercase text-rose-300/80 bg-rose-950/40 border border-rose-900/40 rounded px-1.5 py-0.5 ml-2">{loc.status}</span>}
+                        {!isActive && <span className="text-[9px] font-bold uppercase text-rose-300 bg-slate-900/80 border border-rose-500/30 rounded px-1.5 py-0.5 ml-2">{loc.status}</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-[10px] text-slate-400">
                       <span className="font-mono">{done}/{required} done</span>
                       {nextDue && (
-                        <span className={`font-mono px-1.5 py-0.5 rounded border ${isOverdue ? 'text-rose-300 border-rose-900/40 bg-rose-950/30' : 'text-slate-400 border-slate-700/40 bg-slate-800/30'}`}>
+                        <span className={`font-mono px-1.5 py-0.5 rounded border ${isOverdue ? 'text-rose-300 border-rose-500/30 bg-slate-900/80' : 'text-slate-400 border-slate-700/40 bg-slate-900/80'}`}>
                           Next: {formatMonthYear(nextDue)}{isOverdue ? ' (overdue)' : ''}
                         </span>
                       )}
@@ -545,7 +545,7 @@ export default function InspectionTab({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded border ${w.status === 'open' ? 'text-emerald-300 border-emerald-900/40 bg-emerald-950/30' : 'text-slate-500 border-slate-700/40 bg-slate-800/30'}`}>
+                        <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded border ${w.status === 'open' ? 'text-emerald-300 border-emerald-500/30 bg-slate-900/80' : 'text-slate-500 border-slate-700/40 bg-slate-900/80'}`}>
                           {w.status}
                         </span>
                         <button onClick={() => onUpdateWindow({ ...w, status: w.status === 'open' ? 'closed' : 'open' })}
@@ -677,8 +677,8 @@ export default function InspectionTab({
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${
-                      f.severity === 'high' ? 'bg-rose-950/40 text-rose-300 border-rose-900/30' :
-                      f.severity === 'medium' ? 'bg-amber-950/40 text-amber-300 border-amber-900/30' :
+                      f.severity === 'high' ? 'bg-slate-900/80 text-rose-300 border-rose-500/30' :
+                      f.severity === 'medium' ? 'bg-slate-900/80 text-amber-300 border-amber-500/30' :
                       'bg-slate-800 text-slate-400 border-slate-700'
                     }`}>{f.category} — L{f.actionLevel}</span>
                     <p className="text-xs text-slate-300 mt-1.5">{f.description}</p>
@@ -821,7 +821,7 @@ export default function InspectionTab({
                   {selectedLocIds.map(id => {
                     const l = locations.find(x => x.id === id);
                     return l ? (
-                      <span key={id} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-950/40 border border-emerald-900/40 text-[10px] font-semibold text-emerald-300">
+                      <span key={id} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-900/80 border border-emerald-500/30 text-[10px] font-semibold text-emerald-300">
                         {l.building} Rm {l.roomNumber}
                         <button onClick={() => toggleLocSelection(id)} className="text-emerald-500 hover:text-rose-300"><X className="h-2.5 w-2.5" /></button>
                       </span>

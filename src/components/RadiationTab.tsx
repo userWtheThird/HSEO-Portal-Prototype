@@ -40,7 +40,7 @@ const DEFAULT_RUAS: Rua[] = [
     id: 'rua_1',
     spaceID: 'LSK105',
     type: 'Communal',
-    department: 'Department of Physics',
+    department: 'PHYS',
     personInCharge: 'Sarah Jenkins',
     groups: [
       {
@@ -68,7 +68,7 @@ const DEFAULT_RUAS: Rua[] = [
     id: 'rua_2',
     spaceID: 'UST302',
     type: 'Individual',
-    department: 'Department of Chemistry',
+    department: 'CHEM',
     piId: 'pers_elena',
     piName: 'Dr. Elena Rostova',
     isotopes: ['Tritium (H-3)', 'Sulfur-35'],
@@ -168,7 +168,7 @@ export default function RadiationTab({
   // States for adding dosimeter log
   const [isAddingDose, setIsAddingDose] = useState(false);
   const [doseEmployee, setDoseEmployee] = useState('');
-  const [doseDept, setDoseDept] = useState('Department of Physics');
+  const [doseDept, setDoseDept] = useState('PHYS');
   const [doseVal, setDoseVal] = useState<number>(1.2);
   const [doseThreshold, setDoseThreshold] = useState<number>(1.0);
   const [doseError, setDoseError] = useState<string | null>(null);
@@ -176,7 +176,7 @@ export default function RadiationTab({
   // --- RUA FORM FIELDS STATES ---
   const [ruaSpaceID, setRuaSpaceID] = useState('');
   const [ruaType, setRuaType] = useState<'Communal' | 'Individual'>('Communal');
-  const [ruaDept, setRuaDept] = useState('Department of Physics');
+  const [ruaDept, setRuaDept] = useState('PHYS');
   const [ruaPic, setRuaPic] = useState('');
   // Individual fields
   const [ruaPiId, setRuaPiId] = useState('');
@@ -275,7 +275,7 @@ export default function RadiationTab({
 
       // Apparatus specific
       licenceNumber: inventoryCategory === 'apparatus' ? licenceNumber : undefined,
-      department: inventoryCategory === 'apparatus' ? apparatusDept || (matchedLoc ? matchedLoc.department : 'Department of Physics') : undefined,
+      department: inventoryCategory === 'apparatus' ? apparatusDept || (matchedLoc ? matchedLoc.department : 'PHYS') : undefined,
       equipmentDescription: inventoryCategory === 'apparatus' ? equipmentDescription : undefined,
       xrayTubeSerialNumbers: inventoryCategory === 'apparatus' ? xrayTubeSerialNumbers : undefined,
       licenceExpiryDate: inventoryCategory === 'apparatus' ? licenceExpiryDate : undefined,
@@ -580,7 +580,7 @@ export default function RadiationTab({
     if (filterDept !== 'All') {
       let sourceDept = 'Unknown';
       if (source.category === 'apparatus') {
-        sourceDept = source.department || 'Department of Physics';
+        sourceDept = source.department || 'PHYS';
       } else {
         const matchedLoc = locations.find(l => l.spaceID === source.spaceID);
         if (matchedLoc) sourceDept = matchedLoc.department;
@@ -1243,8 +1243,8 @@ export default function RadiationTab({
                             </div>
                             <span className={`inline-flex px-2 py-0.5 rounded text-[9px] uppercase font-bold border ${
                               isCommunal 
-                                ? 'bg-indigo-950/40 text-indigo-400 border-indigo-900/40' 
-                                : 'bg-emerald-950/40 text-emerald-400 border-emerald-900/40'
+                                ? 'bg-slate-900/80 text-indigo-300 border-indigo-500/30'
+                                : 'bg-slate-900/80 text-emerald-300 border-emerald-500/30'
                             }`}>
                               {rua.type}
                             </span>
@@ -1413,14 +1413,14 @@ export default function RadiationTab({
                                     <td className="px-4 py-3 text-slate-400">
                                       {(() => {
                                         const matchedLoc = locations.find(l => l.spaceID === source.spaceID);
-                                        return matchedLoc ? matchedLoc.department : 'Department of Physics';
+                                        return matchedLoc ? matchedLoc.department : 'PHYS';
                                       })()}
                                     </td>
                                     <td className="px-4 py-3 font-mono font-bold text-amber-400">{source.spaceID}</td>
                                     <td className="px-4 py-3">
                                       {(() => {
                                         const matchedLoc = locations.find(l => l.spaceID === source.spaceID);
-                                        const dept = matchedLoc ? matchedLoc.department : 'Department of Physics';
+                                        const dept = matchedLoc ? matchedLoc.department : 'PHYS';
                                         const ftm = persons.find(p => p.role === 'Field Team Member' && p.assignedDepartments?.includes(dept)) 
                                                  || persons.find(p => p.role === 'Field Team Member');
                                         const ftmName = ftm ? ftm.name : 'Unassigned';
@@ -1488,8 +1488,8 @@ export default function RadiationTab({
                                     <td className="px-4 py-3 text-right">
                                       <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase ${
                                         source.status === 'safe' 
-                                          ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/30' 
-                                          : 'bg-rose-950/40 text-rose-400 border-rose-900/30 animate-pulse'
+                                          ? 'bg-slate-900/80 text-emerald-300 border-emerald-500/30' 
+                                          : 'bg-slate-900/80 text-rose-300 border-rose-500/30 animate-pulse'
                                       }`}>
                                         {source.status}
                                       </span>
@@ -1500,7 +1500,7 @@ export default function RadiationTab({
                                   <>
                                     <td className="px-4 py-3 font-semibold text-slate-100">{source.sourceName || source.equipmentDescription}</td>
                                     <td className="px-4 py-3 text-amber-500 font-mono font-medium">{source.licenceNumber}</td>
-                                    <td className="px-4 py-3 text-slate-400">{source.department || 'Department of Physics'}</td>
+                                    <td className="px-4 py-3 text-slate-400">{source.department || 'PHYS'}</td>
                                     <td className="px-4 py-3 font-bold font-mono text-slate-300">{source.spaceID}</td>
                                     <td className="px-4 py-3 text-slate-400 font-medium">
                                       {source.licenceExpiryDate || 'N/A'}
@@ -1511,8 +1511,8 @@ export default function RadiationTab({
                                     <td className="px-4 py-3 text-right">
                                       <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase ${
                                         source.status === 'safe' 
-                                          ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/30' 
-                                          : 'bg-rose-950/40 text-rose-400 border-rose-900/30 animate-pulse'
+                                          ? 'bg-slate-900/80 text-emerald-300 border-emerald-500/30' 
+                                          : 'bg-slate-900/80 text-rose-300 border-rose-500/30 animate-pulse'
                                       }`}>
                                         {source.status}
                                       </span>
@@ -1604,7 +1604,7 @@ export default function RadiationTab({
                           </div>
                           <div className="flex justify-between">
                             <span className="text-slate-500">Department:</span>
-                            <span className="font-bold text-slate-300">{selectedSource.department || 'Department of Physics'}</span>
+                            <span className="font-bold text-slate-300">{selectedSource.department || 'PHYS'}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-slate-500">Licence Expiry Date:</span>
@@ -1853,7 +1853,7 @@ export default function RadiationTab({
                 </div>
 
                 {doseError && (
-                  <div className="p-3 bg-rose-950/40 border border-rose-900/40 rounded text-[11px] text-rose-400 leading-relaxed font-semibold">
+                  <div className="p-3 bg-slate-900/80 border border-rose-500/30 rounded text-[11px] text-rose-300 leading-relaxed font-semibold">
                     {doseError}
                   </div>
                 )}
