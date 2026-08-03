@@ -28,7 +28,9 @@ import {
   PanelLeftOpen,
   UserCheck,
   CalendarClock,
-  ArrowLeft
+  ArrowLeft,
+  Settings,
+  UserCog
 } from 'lucide-react';
 
 import { 
@@ -89,6 +91,7 @@ import LocationTab from './components/LocationTab';
 import DirectoryTab from './components/DirectoryTab';
 import FtmTab from './components/FtmTab';
 import DepartmentTab from './components/DepartmentTab';
+import UserRolePermissionTab, { hasPermission } from './components/UserRolePermissionTab';
 import EquipmentTab from './components/EquipmentTab';
 import ExposureTab from './components/ExposureTab';
 import InspectionBookingTab from './components/InspectionBookingTab';
@@ -96,11 +99,9 @@ import InspectionBookingTab from './components/InspectionBookingTab';
 const ROLE_LABELS: Record<string, string> = {
   superadmin: 'Superadmin',
   admin: 'Admin',
+  hseo_management: 'HSEO Management',
+  staff: 'Staff',
   field_team_member: 'Field Team Member',
-  inspector: 'Inspector',
-  radiation_officer: 'Radiation Officer',
-  operator: 'Operator',
-  facilities: 'Facilities',
   PI: 'PI',
   Contact: 'Contact'
 };
@@ -131,16 +132,17 @@ export default function App() {
   // Navigation active tab
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
 
   // Collapsible sidebar sections
   const [databasesOpen, setDatabasesOpen] = useState(true);
   const [safetyOpen, setSafetyOpen] = useState(true);
   const [permitsOpen, setPermitsOpen] = useState(true);
   const [hygieneOpen, setHygieneOpen] = useState(true);
+  const [adminOpen, setAdminOpen] = useState(true);
 
   // States
-  const [currentUser, setCurrentUser] = useState<User>(SIMULATED_USERS.find(u => ['superadmin', 'admin', 'field_team_member', 'inspector'].includes(u.role)) || SIMULATED_USERS[0]);
+  const [currentUser, setCurrentUser] = useState<User>(SIMULATED_USERS.find(u => ['superadmin', 'admin', 'field_team_member'].includes(u.role)) || SIMULATED_USERS[0]);
   const [selectedDirectoryPersonId, setSelectedDirectoryPersonId] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
@@ -756,7 +758,7 @@ export default function App() {
   const totalUrgentAlerts = notifications.length;
 
   // HSEO staff roles allowed in the portal
-  const HSEO_ROLES = ['superadmin', 'admin', 'field_team_member', 'inspector'];
+  const HSEO_ROLES = ['superadmin', 'admin', 'hseo_management', 'field_team_member'];
   const hseoUsers = SIMULATED_USERS.filter(u => HSEO_ROLES.includes(u.role));
   const deptUsers = SIMULATED_USERS.filter(u => !HSEO_ROLES.includes(u.role));
   const isHseoUser = HSEO_ROLES.includes(currentUser.role);
@@ -840,7 +842,12 @@ export default function App() {
               <Lock className="h-4 w-4" /> Login to HSEO Portal
             </button>
             <button onClick={() => setPortalView('booking')}
-              className="w-full py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-bold transition flex items-center justify-center gap-2">
+              disabled={!hasPermission(currentUser.role, 'canBookInspection')}
+              className={`w-full py-3.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 ${
+                hasPermission(currentUser.role, 'canBookInspection')
+                  ? 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200'
+                  : 'bg-slate-800/40 text-slate-600 border border-slate-800 cursor-not-allowed'
+              }`}>
               <CalendarClock className="h-4 w-4 text-indigo-400" /> Book an Inspection
             </button>
           </div>
@@ -941,6 +948,46 @@ export default function App() {
           {/* Divider */}
           <div className="border-t border-slate-800 my-2" />
 
+          {/* Admin */}
+          {sidebarCollapsed ? (
+            <>
+              <button onClick={() => { setActiveTab('departments'); setMobileMenuOpen(false); }} title="Departments"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'departments' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <Building2 className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => { setActiveTab('user-role'); setMobileMenuOpen(false); }} title="User Role Permission"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'user-role' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <UserCog className="h-3.5 w-3.5" />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setAdminOpen(!adminOpen)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300 hover:bg-slate-800/40 transition"
+              >
+                <Settings className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 text-left">Admin</span>
+                {adminOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              </button>
+              {adminOpen && (
+                <div className="ml-3 space-y-0.5 border-l border-slate-800 pl-2">
+                  <button onClick={() => { setActiveTab('departments'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'departments' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Building2 className="h-3.5 w-3.5 shrink-0 text-indigo-400" /><span>Departments</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('user-role'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'user-role' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <UserCog className="h-3.5 w-3.5 shrink-0 text-amber-400" /><span>User Role Permission</span>
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Divider */}
+          <div className="border-t border-slate-800 my-2" />
+
           {/* Databases */}
           {sidebarCollapsed ? (
             <>
@@ -959,10 +1006,6 @@ export default function App() {
               <button onClick={() => { setActiveTab('equipment'); setMobileMenuOpen(false); }} title="Equipment"
                 className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'equipment' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                 <Wrench className="h-3.5 w-3.5" />
-              </button>
-              <button onClick={() => { setActiveTab('departments'); setMobileMenuOpen(false); }} title="Departments"
-                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'departments' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
-                <Building2 className="h-3.5 w-3.5" />
               </button>
             </>
           ) : (
@@ -992,10 +1035,6 @@ export default function App() {
                   <button onClick={() => { setActiveTab('equipment'); setMobileMenuOpen(false); }}
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'equipment' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                     <Wrench className="h-3.5 w-3.5 shrink-0 text-amber-400" /><span>Equipment</span>
-                  </button>
-                  <button onClick={() => { setActiveTab('departments'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'departments' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
-                    <Building2 className="h-3.5 w-3.5 shrink-0 text-indigo-400" /><span>Departments</span>
                   </button>
                 </div>
               )}
@@ -1407,6 +1446,7 @@ export default function App() {
         
           {activeTab === 'ftm' && (
             <FtmTab 
+              currentUser={currentUser}
               persons={persons}
               departments={orgUnits.filter(u => u.type === 'department').map(u => u.name)}
               onUpdatePerson={handleUpdatePerson}
@@ -1418,6 +1458,13 @@ export default function App() {
               orgUnits={orgUnits}
               locations={locations}
               onUpdateOrgUnits={handleUpdateOrgUnits}
+            />
+          )}
+
+          {activeTab === 'user-role' && (
+            <UserRolePermissionTab
+              currentUser={currentUser}
+              allUsers={SIMULATED_USERS}
             />
           )}
 

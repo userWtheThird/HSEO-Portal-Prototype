@@ -93,7 +93,7 @@ export default function HotWorkTab({
 
   // Approve a permit (HSE Supervisor role required)
   const handleApprove = (permit: HotWorkPermit) => {
-    const isAuthorized = currentUser.role === 'admin' || currentUser.role === 'facilities';
+    const isAuthorized = currentUser.role === 'admin' || currentUser.role === 'superadmin';
     if (!isAuthorized) {
       alert(`Permit authorization denied. Your simulated role "${currentUser.title}" does not hold Hot Work Authorization sign-off clearance. Please switch simulation user to Sarah Jenkins (HSE Director) in the header to approve.`);
       return;

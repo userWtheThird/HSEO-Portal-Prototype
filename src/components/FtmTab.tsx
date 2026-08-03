@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Person } from '../types';
-import { Shield, Building2, User, UserCheck, X, Target, ClipboardCheck, Radio, Zap, Flame, Lock, Plane, Activity, Droplets, Wind } from 'lucide-react';
+import { Person, User } from '../types';
+import { hasPermission } from './UserRolePermissionTab';
+import { Shield, Building2, User as UserIcon, UserCheck, X, Target, ClipboardCheck, Radio, Zap, Flame, Lock, Plane, Activity, Droplets, Wind, Eye } from 'lucide-react';
 
 interface FtmTabProps {
+  currentUser: User;
   persons: Person[];
   departments: string[];
   onUpdatePerson: (person: Person) => void;
@@ -20,8 +22,9 @@ const FOCAL_POINTS = [
   { id: 'IEQ', icon: Wind, color: 'text-emerald-300 border-emerald-500/30 bg-emerald-950/30' }
 ];
 
-export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabProps) {
+export default function FtmTab({ currentUser, persons, departments, onUpdatePerson }: FtmTabProps) {
   const [subTab, setSubTab] = useState<'departments' | 'focalpoints'>('departments');
+  const canEdit = hasPermission(currentUser.role, 'canEditFtm');
 
   // Use the managed departments list
   const allDepartments = [...departments].sort();
@@ -39,6 +42,7 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
 
   const handleDrop = (e: React.DragEvent, ftmId: string) => {
     e.preventDefault();
+    if (!canEdit) return;
     const department = e.dataTransfer.getData('department');
     if (!department) return;
     const targetFtm = ftms.find(f => f.id === ftmId);
@@ -56,6 +60,7 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); };
 
   const handleRemoveDept = (ftmId: string, department: string) => {
+    if (!canEdit) return;
     const targetFtm = ftms.find(f => f.id === ftmId);
     if (!targetFtm) return;
     onUpdatePerson({ ...targetFtm, assignedDepartments: targetFtm.assignedDepartments?.filter(d => d !== department) || [] });
@@ -63,6 +68,7 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
 
   // --- Focal Point Assignment logic (many-to-many) ---
   const toggleFocalPoint = (ftmId: string, focalPoint: string) => {
+    if (!canEdit) return;
     const ftm = ftms.find(f => f.id === ftmId);
     if (!ftm) return;
     const current = ftm.assignedFocalPoints || [];
@@ -74,6 +80,14 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
+      {/* Read-only notice for non-authorized users */}
+      {!canEdit && (
+        <div className="flex items-center gap-2 mb-4 px-4 py-2.5 bg-amber-950/20 border border-amber-700/20 rounded-lg">
+          <Eye className="h-4 w-4 text-amber-400 shrink-0" />
+          <p className="text-xs text-amber-300 font-medium">View-only mode — only Superusers can modify field team assignments.</p>
+        </div>
+      )}
+
       {/* Sub-tab switcher */}
       <div className="flex items-center gap-1 p-1 bg-slate-800/40 rounded-lg w-fit mb-4">
         <button onClick={() => setSubTab('departments')}
@@ -104,8 +118,8 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
                 <div className="text-center text-xs text-slate-500 py-4 border border-dashed border-slate-700 rounded-lg">All departments assigned.</div>
               ) : (
                 unassignedDepartments.map(dept => (
-                  <div key={dept} draggable onDragStart={(e) => handleDragStart(e, dept)}
-                    className="bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-lg p-3 cursor-grab active:cursor-grabbing transition text-sm font-medium text-slate-200 shadow-sm">
+                  <div key={dept} draggable={canEdit} onDragStart={(e) => canEdit && handleDragStart(e, dept)}
+                    className={`border rounded-lg p-3 text-sm font-medium shadow-sm transition ${canEdit ? 'bg-slate-700/50 hover:bg-slate-700 border-slate-600 cursor-grab active:cursor-grabbing text-slate-200' : 'bg-slate-800/40 border-slate-700/40 text-slate-400 cursor-default'}`}>
                     {dept}
                   </div>
                 ))
@@ -124,8 +138,8 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
             <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                 {ftms.map(ftm => (
-                  <div key={ftm.id} onDrop={(e) => handleDrop(e, ftm.id)} onDragOver={handleDragOver}
-                    className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 flex flex-col h-[260px] shadow-sm transition hover:border-indigo-500/50">
+                  <div key={ftm.id} onDrop={(e) => canEdit && handleDrop(e, ftm.id)} onDragOver={(e) => canEdit && handleDragOver(e)}
+                    className={`border rounded-xl p-4 flex flex-col h-[260px] shadow-sm transition ${canEdit ? 'bg-slate-800/60 border-slate-700 hover:border-indigo-500/50' : 'bg-slate-800/40 border-slate-700/40'}`}>
                     <div className="flex items-center gap-3 mb-3 border-b border-slate-700 pb-3">
                       <div className="h-10 w-10 bg-indigo-900/50 text-indigo-400 rounded-full flex items-center justify-center border border-indigo-500/20">
                         <UserCheck className="h-5 w-5" />
@@ -142,13 +156,15 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
                         </div>
                       ) : (
                         ftm.assignedDepartments.map(dept => (
-                          <div key={dept} draggable onDragStart={(e) => handleDragStart(e, dept)}
-                            className="bg-indigo-900/20 border border-indigo-500/30 text-indigo-300 rounded px-2.5 py-2 text-xs flex justify-between items-center group cursor-grab active:cursor-grabbing">
+                          <div key={dept} draggable={canEdit} onDragStart={(e) => canEdit && handleDragStart(e, dept)}
+                            className={`bg-indigo-900/20 border border-indigo-500/30 text-indigo-300 rounded px-2.5 py-2 text-xs flex justify-between items-center group ${canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}>
                             <span className="truncate pr-2 font-medium">{dept}</span>
-                            <button onClick={() => handleRemoveDept(ftm.id, dept)}
-                              className="text-slate-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <X className="h-3 w-3" />
-                            </button>
+                            {canEdit && (
+                              <button onClick={() => handleRemoveDept(ftm.id, dept)}
+                                className="text-slate-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
                           </div>
                         ))
                       )}
@@ -157,7 +173,7 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
                 ))}
                 {ftms.length === 0 && (
                   <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-800 rounded-xl">
-                    <User className="h-10 w-10 mb-2 opacity-50" />
+                    <UserIcon className="h-10 w-10 mb-2 opacity-50" />
                     <p className="text-sm">No Field Team Members found in directory.</p>
                   </div>
                 )}
@@ -194,7 +210,7 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
                       {assignedFtms.map(f => (
                         <span key={f.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700 text-[10px] font-semibold text-slate-300">
                           {f.name}
-                          <button onClick={() => toggleFocalPoint(f.id, fp.id)} className="text-slate-500 hover:text-rose-300 transition"><X className="h-2.5 w-2.5" /></button>
+                          <button onClick={() => toggleFocalPoint(f.id, fp.id)} className={`transition ${canEdit ? 'text-slate-500 hover:text-rose-300' : 'cursor-default opacity-50'}`}><X className="h-2.5 w-2.5" /></button>
                         </span>
                       ))}
                     </div>
@@ -204,11 +220,14 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
                     {ftms.map(f => {
                       const isActive = f.assignedFocalPoints?.includes(fp.id);
                       return (
-                        <button key={f.id} onClick={() => toggleFocalPoint(f.id, fp.id)}
+                        <button key={f.id} onClick={() => canEdit && toggleFocalPoint(f.id, fp.id)}
+                          disabled={!canEdit}
                           className={`px-2 py-1 rounded text-[10px] font-semibold border transition ${
                             isActive
                               ? 'bg-indigo-600 border-indigo-500 text-white'
-                              : 'bg-slate-800/40 border-slate-700/50 text-slate-500 hover:text-slate-300 hover:border-slate-600'
+                              : canEdit
+                                ? 'bg-slate-800/40 border-slate-700/50 text-slate-500 hover:text-slate-300 hover:border-slate-600'
+                                : 'bg-slate-800/20 border-slate-800 text-slate-600 cursor-default'
                           }`}>
                           {f.name.split(' ')[0]}
                         </button>
@@ -222,7 +241,7 @@ export default function FtmTab({ persons, departments, onUpdatePerson }: FtmTabP
 
           {ftms.length === 0 && (
             <div className="py-12 flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-800 rounded-xl">
-              <User className="h-10 w-10 mb-2 opacity-50" />
+              <UserIcon className="h-10 w-10 mb-2 opacity-50" />
               <p className="text-sm">No Field Team Members found in directory.</p>
             </div>
           )}

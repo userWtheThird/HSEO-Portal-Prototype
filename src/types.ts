@@ -1,4 +1,4 @@
-export type Role = 'superadmin' | 'admin' | 'inspector' | 'radiation_officer' | 'operator' | 'facilities' | 'PI' | 'Contact' | 'field_team_member';
+export type Role = 'superadmin' | 'admin' | 'hseo_management' | 'staff' | 'PI' | 'Contact' | 'field_team_member';
 
 export interface User {
   id: string;

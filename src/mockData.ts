@@ -49,7 +49,7 @@ export const SIMULATED_USERS: User[] = [
     id: 'user_marcus',
     name: 'Marcus Chen',
     email: 'marcus.chen@hseo-portal.net',
-    role: 'inspector',
+    role: 'staff',
     avatarColor: 'bg-indigo-600 text-white',
     title: 'Principal HSE Auditor'
   },
@@ -65,7 +65,7 @@ export const SIMULATED_USERS: User[] = [
     id: 'user_james',
     name: 'James Rodriguez',
     email: 'james.rodriguez@hseo-portal.net',
-    role: 'operator',
+    role: 'staff',
     avatarColor: 'bg-rose-600 text-white',
     title: 'Senior Operations Supervisor'
   },
@@ -73,7 +73,7 @@ export const SIMULATED_USERS: User[] = [
     id: 'user_nisha',
     name: 'Nisha Patel',
     email: 'nisha.patel@hseo-portal.net',
-    role: 'facilities',
+    role: 'staff',
     avatarColor: 'bg-cyan-600 text-white',
     title: 'Lead Utilities & Facilities Engineer'
   },
@@ -84,6 +84,14 @@ export const SIMULATED_USERS: User[] = [
     role: 'superadmin',
     avatarColor: 'bg-violet-600 text-white',
     title: 'Servant'
+  },
+  {
+    id: 'user_hseo_mgmt_1',
+    name: 'Dr. Emily Lau',
+    email: 'emily.lau@hseo-portal.net',
+    role: 'hseo_management',
+    avatarColor: 'bg-amber-600 text-white',
+    title: 'HSEO Management — Deputy Director'
   },
   {
     id: 'user_chem_gong',
@@ -1007,7 +1015,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     timestamp: '2026-07-11T16:30:00Z',
     userId: 'user_nisha',
     userName: 'Nisha Patel',
-    userRole: 'facilities',
+    userRole: 'staff',
     action: 'Logged Water Quality Measurement',
     details: 'Legionella testing completed at Main Cooling Tower (Negative). Cl2 level optimal.',
     program: 'Water Sanitation'
@@ -1027,7 +1035,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     timestamp: '2026-07-10T14:20:00Z',
     userId: 'user_marcus',
     userName: 'Marcus Chen',
-    userRole: 'inspector',
+    userRole: 'staff',
     action: 'Completed Monthly Site Audit',
     details: 'HSE Monthly Inspection completed for Chemical Prep Lab. Found 2 minor violations.',
     program: 'Inspection'
@@ -1037,7 +1045,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     timestamp: '2026-07-10T09:10:00Z',
     userId: 'user_james',
     userName: 'James Rodriguez',
-    userRole: 'operator',
+    userRole: 'staff',
     action: 'Submitted Hazardous Waste Pickup Request',
     details: 'Request #HW-2026-042 submitted for 5 gallons of mixed organic solvents.',
     program: 'Hazardous Waste'
@@ -1057,7 +1065,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     timestamp: '2026-07-08T10:30:00Z',
     userId: 'user_nisha',
     userName: 'Nisha Patel',
-    userRole: 'facilities',
+    userRole: 'staff',
     action: 'Resolved IEQ Ventilation Complaint',
     details: 'Adjusted damper position in Conference Room 3B to resolve stuffiness and lower CO2.',
     program: 'IEQ'
