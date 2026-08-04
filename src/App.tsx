@@ -30,7 +30,8 @@ import {
   CalendarClock,
   ArrowLeft,
   Settings,
-  UserCog
+  UserCog,
+  FileText
 } from 'lucide-react';
 
 import { 
@@ -54,7 +55,8 @@ import {
   ExposureRecord,
   InspectionWindow,
   OrgUnit,
-  FiscalYearConfig 
+  FiscalYearConfig,
+  InspectionFinding 
 } from './types';
 
 import { 
@@ -97,6 +99,7 @@ import EquipmentTab from './components/EquipmentTab';
 import ExposureTab from './components/ExposureTab';
 import InspectionBookingTab from './components/InspectionBookingTab';
 import SettingsTab, { computeFYLabel } from './components/SettingsTab';
+import InspectionFindingListTab from './components/InspectionFindingListTab';
 
 const ROLE_LABELS: Record<string, string> = {
   superadmin: 'Superadmin',
@@ -165,6 +168,7 @@ export default function App() {
   const [exposureRecords, setExposureRecords] = useState<ExposureRecord[]>([]);
   const [inspectionWindows, setInspectionWindows] = useState<InspectionWindow[]>([]);
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
+  const [inspectionFindings, setInspectionFindings] = useState<InspectionFinding[]>([]);
 
   // Fiscal Year configuration
   const DEFAULT_FY: FiscalYearConfig = { startMonth: 7, startDay: 1, endMonth: 6, endDay: 30 };
@@ -237,6 +241,7 @@ export default function App() {
         setExposureRecords(parsed.exposureRecords || INITIAL_EXPOSURE_RECORDS);
         setInspectionWindows(parsed.inspectionWindows || []);
         setOrgUnits(parsed.orgUnits || INITIAL_ORG_UNITS);
+        setInspectionFindings(parsed.inspectionFindings || []);
         
         const storedUser = localStorage.getItem('HSEO_PORTAL_CURRENT_USER');
         if (storedUser) {
@@ -291,6 +296,7 @@ export default function App() {
     exposureRecords: ExposureRecord[];
     inspectionWindows: InspectionWindow[];
     orgUnits: OrgUnit[];
+    inspectionFindings: InspectionFinding[];
   }>) => {
     try {
       const currentState = {
@@ -312,7 +318,8 @@ export default function App() {
         equipmentList: updated.equipmentList ?? equipmentList,
         exposureRecords: updated.exposureRecords ?? exposureRecords,
         inspectionWindows: updated.inspectionWindows ?? inspectionWindows,
-        orgUnits: updated.orgUnits ?? orgUnits
+        orgUnits: updated.orgUnits ?? orgUnits,
+        inspectionFindings: updated.inspectionFindings ?? inspectionFindings
       };
       localStorage.setItem('HSEO_PORTAL_STATE_V1', JSON.stringify(currentState));
     } catch (e) {
@@ -329,6 +336,11 @@ export default function App() {
   const handleUpdateOrgUnits = (next: OrgUnit[]) => {
     setOrgUnits(next);
     saveState({ orgUnits: next });
+  };
+
+  const handleSaveInspectionFindings = (next: InspectionFinding[]) => {
+    setInspectionFindings(next);
+    saveState({ inspectionFindings: next });
   };
 
   const handleUpdateLocation = (updatedLoc: Location) => {
@@ -977,6 +989,10 @@ export default function App() {
                 className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'user-role' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                 <UserCog className="h-3.5 w-3.5" />
               </button>
+              <button onClick={() => { setActiveTab('inspection-findings'); setMobileMenuOpen(false); }} title="Inspection Finding List"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'inspection-findings' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <FileText className="h-3.5 w-3.5" />
+              </button>
               <button onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }} title="Settings"
                 className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'settings' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                 <Settings className="h-3.5 w-3.5" />
@@ -1001,6 +1017,10 @@ export default function App() {
                   <button onClick={() => { setActiveTab('user-role'); setMobileMenuOpen(false); }}
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'user-role' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                     <UserCog className="h-3.5 w-3.5 shrink-0 text-amber-400" /><span>User Role Permission</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('inspection-findings'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'inspection-findings' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-400" /><span>Inspection Finding List</span>
                   </button>
                   <button onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'settings' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
@@ -1346,6 +1366,7 @@ export default function App() {
               locations={locations}
               persons={persons}
               windows={inspectionWindows}
+              inspectionFindings={inspectionFindings}
               onAddInspection={handleAddInspection}
               onUpdateFindings={handleUpdateFindings}
               onUpdateInspection={handleUpdateInspection}
@@ -1496,6 +1517,14 @@ export default function App() {
             <UserRolePermissionTab
               currentUser={currentUser}
               allUsers={SIMULATED_USERS}
+            />
+          )}
+
+          {activeTab === 'inspection-findings' && (
+            <InspectionFindingListTab
+              currentUser={currentUser}
+              findings={inspectionFindings}
+              onSaveFindings={handleSaveInspectionFindings}
             />
           )}
 

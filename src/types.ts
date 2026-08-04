@@ -67,6 +67,7 @@ export interface AuditLog {
 export interface Finding {
   id: string;
   category: string; // e.g. 'fire safety', 'biosafety', 'chemical safety', 'housekeeping'
+  findingCode?: string; // Auto-generated from standardized findings, e.g. 'FS-001'
   description: string;
   status: 'open' | 'resolved';
   severity: 'low' | 'medium' | 'high';
@@ -382,4 +383,17 @@ export interface FiscalYearConfig {
   startDay: number;
   endMonth: number; // 1-12
   endDay: number;
+}
+
+export interface InspectionFinding {
+  id: string;
+  category: string; // e.g. 'Fire Safety', 'BioSafety', 'Chemical Safety', 'Air Ventilation'
+  findingCode: string; // Auto-generated based on category, e.g. 'FS-001', 'BS-002'
+  shortObservation: string; // Brief observation title for dropdown selection
+  actionLevel: 'I' | 'II' | 'III';
+  description: string;
+  followUpAction: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

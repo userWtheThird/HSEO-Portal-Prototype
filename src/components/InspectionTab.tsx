@@ -5,7 +5,7 @@ import {
   Image as ImageIcon, ArrowLeft, Moon, Sun, Building2, CheckCircle2, Circle, Bell, AlertTriangle, CalendarClock, Lock, Unlock, ClipboardList, CalendarCheck, FileText, Filter
 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import { Inspection, User as AppUser, Location, Person, Finding, InspectionWindow, FiscalYearConfig } from '../types';
+import { Inspection, User as AppUser, Location, Person, Finding, InspectionWindow, FiscalYearConfig, InspectionFinding } from '../types';
 import { computeFYRange } from './SettingsTab';
 
 interface InspectionTabProps {
@@ -14,6 +14,7 @@ interface InspectionTabProps {
   locations: Location[];
   persons: Person[];
   windows: InspectionWindow[];
+  inspectionFindings?: InspectionFinding[];
   onAddInspection: (inspection: Inspection, logDetails: string) => void;
   onUpdateFindings: (inspectionId: string, findingId: string, status: 'open' | 'resolved', correctiveAction?: string) => void;
   onUpdateInspection: (updated: Inspection) => void;
@@ -134,7 +135,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function InspectionTab({
-  currentUser, inspections, locations, persons, windows,
+  currentUser, inspections, locations, persons, windows, inspectionFindings = [],
   onAddInspection, onUpdateFindings, onUpdateInspection, onAddWindow, onUpdateWindow,
   fiscalYear
 }: InspectionTabProps) {
@@ -292,12 +293,70 @@ export default function InspectionTab({
   // Finding draft
   const [isDraftingFinding, setIsDraftingFinding] = useState(false);
   const [newFindingCat, setNewFindingCat] = useState(CATEGORIES[0]);
+  const [newFindingCode, setNewFindingCode] = useState('');
   const [newFindingDesc, setNewFindingDesc] = useState('');
   const [newFindingLevel, setNewFindingLevel] = useState<1|2|3>(1);
   const [newFindingContactId, setNewFindingContactId] = useState('');
   const [newFindingFollowUp, setNewFindingFollowUp] = useState('');
   const [newFindingPhoto, setNewFindingPhoto] = useState<string | null>(null);
+  const [selectedStdFindingId, setSelectedStdFindingId] = useState<string | null>(null);
   const [rectificationInputs, setRectificationInputs] = useState<Record<string, string>>({});
+
+  // Get unique categories from standardized findings database
+  const stdFindingCategories = Array.from(new Set(inspectionFindings.map(f => f.category))).sort();
+  const allCategories = [...new Set([...CATEGORIES, ...stdFindingCategories])].sort();
+
+  // Get standardized findings for selected category
+  const stdFindingsForCategory = inspectionFindings.filter(f => f.category === newFindingCat);
+
+  // Handle standardized finding selection
+  const handleStdFindingSelect = (findingId: string) => {
+    setSelectedStdFindingId(findingId);
+    if (findingId) {
+      const stdFinding = inspectionFindings.find(f => f.id === findingId);
+      if (stdFinding) {
+        setNewFindingCode(stdFinding.findingCode);
+        setNewFindingDesc(stdFinding.description);
+        setNewFindingFollowUp(stdFinding.followUpAction);
+        setNewFindingLevel(stdFinding.actionLevel === 'I' ? 1 : stdFinding.actionLevel === 'II' ? 2 : 3);
+      }
+    } else {
+      // Clear auto-filled fields when "Custom Finding" is selected
+      setNewFindingCode('');
+      setNewFindingDesc('');
+      setNewFindingFollowUp('');
+    }
+  };
+
+  // Handle category change - auto-generate finding code
+  const handleCategoryChange = (cat: string) => {
+    setNewFindingCat(cat);
+    setSelectedStdFindingId(null);
+    setNewFindingDesc('');
+    setNewFindingFollowUp('');
+    
+    // Auto-generate finding code based on category
+    if (cat) {
+      const codeMap: Record<string, string> = {
+        'Fire Safety': 'FS',
+        'BioSafety': 'BS',
+        'Chemical Safety': 'CS',
+        'Air Ventilation': 'AV',
+        'Electrical Safety': 'ES',
+        'Radiation Safety': 'RS',
+        'General Housekeeping': 'GH',
+        'PPE Compliance': 'PP',
+        'Emergency Preparedness': 'EP',
+        'Hazardous Materials': 'HM'
+      };
+      const prefix = codeMap[cat] || cat.substring(0, 2).toUpperCase();
+      // Count existing findings in this category in the current report
+      const countInCategory = newFindings.filter(f => f.category === cat).length;
+      setNewFindingCode(`${prefix}-${String(countInCategory + 1).padStart(3, '0')}`);
+    } else {
+      setNewFindingCode('');
+    }
+  };
 
   // --- Data computations ---
   // Get current user's assigned departments (from Person record as FTM)
@@ -437,6 +496,7 @@ export default function InspectionTab({
     const newFinding: Finding = {
       id: 'finding_' + Date.now(),
       category: newFindingCat,
+      findingCode: newFindingCode || undefined,
       description: newFindingDesc,
       status: 'open',
       severity: newFindingLevel === 3 ? 'high' : newFindingLevel === 2 ? 'medium' : 'low',
@@ -452,9 +512,11 @@ export default function InspectionTab({
     });
     setIsDraftingFinding(false);
     setNewFindingDesc('');
+    setNewFindingCode('');
     setNewFindingLevel(1);
     setNewFindingFollowUp('');
     setNewFindingPhoto(null);
+    setSelectedStdFindingId(null);
   };
 
   const handleRectifyFinding = (findingId: string) => {
@@ -506,7 +568,8 @@ export default function InspectionTab({
     } else {
       selectedInspection.findings.forEach((f, idx) => {
         if (y > 270) { doc.addPage(); y = 20; }
-        doc.text(`${idx + 1}. [${f.category}] ${f.description} (Severity: ${f.severity})`, 14, y); y += 6;
+        const codeStr = f.findingCode ? `[${f.findingCode}] ` : '';
+        doc.text(`${idx + 1}. ${codeStr}[${f.category}] ${f.description} (Severity: ${f.severity})`, 14, y); y += 6;
         if (f.followUpActions) { doc.text(`   Follow-up: ${f.followUpActions}`, 14, y); y += 6; }
       });
     }
@@ -1001,7 +1064,10 @@ export default function InspectionTab({
                       f.severity === 'high' ? 'bg-slate-900/80 text-rose-300 border-rose-500/30' :
                       f.severity === 'medium' ? 'bg-slate-900/80 text-amber-300 border-amber-500/30' :
                       'bg-slate-800 text-slate-400 border-slate-700'
-                    }`}>{f.category} — L{f.actionLevel}</span>
+                    }`}>
+                      {f.findingCode && <span className="font-mono mr-1">[{f.findingCode}]</span>}
+                      {f.category} — L{f.actionLevel}
+                    </span>
                     <p className="text-xs text-slate-300 mt-1.5">{f.description}</p>
                     {f.followUpActions && <p className="text-[10px] text-slate-500 mt-1">Follow-up: {f.followUpActions}</p>}
                     {f.rectificationRecord && <p className="text-[10px] text-emerald-300 mt-1">Rectified: {f.rectificationRecord}</p>}
@@ -1025,22 +1091,63 @@ export default function InspectionTab({
             {/* Add finding form */}
             {isDraftingFinding && (
               <div className="border border-indigo-500/30 rounded-lg p-4 bg-indigo-950/10 space-y-3">
+                {/* Category and Finding Code row */}
                 <div className="grid grid-cols-2 gap-3">
-                  <select value={newFindingCat} onChange={e => setNewFindingCat(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none">
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <div>
+                    <label className="block text-[9px] text-slate-500 uppercase font-bold mb-1">Category</label>
+                    <select value={newFindingCat} onChange={e => handleCategoryChange(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none">
+                      {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] text-slate-500 uppercase font-bold mb-1">Finding Code (Auto)</label>
+                    <input value={newFindingCode} readOnly
+                      placeholder="Auto-generated from category"
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-400 focus:border-indigo-500 focus:outline-none font-mono cursor-not-allowed" />
+                  </div>
+                </div>
+
+                {/* Short Observation selector */}
+                {stdFindingsForCategory.length > 0 && (
+                  <div>
+                    <label className="block text-[9px] text-slate-500 uppercase font-bold mb-1">Short Observation</label>
+                    <select value={selectedStdFindingId || ''} onChange={e => handleStdFindingSelect(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none">
+                      <option value="">-- Custom Finding --</option>
+                      {stdFindingsForCategory.map(f => (
+                        <option key={f.id} value={f.id}>{f.shortObservation || `${f.findingCode}: ${f.description.substring(0, 50)}`}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Action Level */}
+                <div>
+                  <label className="block text-[9px] text-slate-500 uppercase font-bold mb-1">Action Level</label>
                   <select value={newFindingLevel} onChange={e => setNewFindingLevel(Number(e.target.value) as 1|2|3)}
-                    className="bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none">
-                    <option value={1}>Level 1 (Low)</option>
-                    <option value={2}>Level 2 (Medium)</option>
-                    <option value={3}>Level 3 (High)</option>
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none">
+                    <option value={1}>Level I (Low)</option>
+                    <option value={2}>Level II (Medium)</option>
+                    <option value={3}>Level III (High)</option>
                   </select>
                 </div>
-                <textarea value={newFindingDesc} onChange={e => setNewFindingDesc(e.target.value)} rows={2} placeholder="Describe the finding..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none resize-none" />
-                <input value={newFindingFollowUp} onChange={e => setNewFindingFollowUp(e.target.value)} placeholder="Follow-up actions (optional)"
-                  className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none" />
+
+                {/* Finding Description */}
+                <div>
+                  <label className="block text-[9px] text-slate-500 uppercase font-bold mb-1">Finding Description</label>
+                  <textarea value={newFindingDesc} onChange={e => setNewFindingDesc(e.target.value)} rows={2} placeholder="Describe the finding..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none resize-none" />
+                </div>
+
+                {/* Follow-up Action */}
+                <div>
+                  <label className="block text-[9px] text-slate-500 uppercase font-bold mb-1">Follow-up Action</label>
+                  <textarea value={newFindingFollowUp} onChange={e => setNewFindingFollowUp(e.target.value)} rows={2} placeholder="Required follow-up actions..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none resize-none" />
+                </div>
+
+                {/* Photo and buttons */}
                 <div className="flex items-center gap-2">
                   <label className="flex items-center gap-1.5 text-[10px] text-slate-400 cursor-pointer">
                     <Camera className="h-3.5 w-3.5" /> Photo
