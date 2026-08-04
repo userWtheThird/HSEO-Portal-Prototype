@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   ClipboardCheck, Plus, Calendar, Check, X,
-  ChevronRight, Download, Camera, Clock,
-  Image as ImageIcon, ArrowLeft, Moon, Sun, Building2, CheckCircle2, Circle, Bell, AlertTriangle, CalendarClock, Lock, Unlock
+  ChevronRight, ChevronDown, Download, Camera, Clock,
+  Image as ImageIcon, ArrowLeft, Moon, Sun, Building2, CheckCircle2, Circle, Bell, AlertTriangle, CalendarClock, Lock, Unlock, ClipboardList, CalendarCheck, FileText, Filter
 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import { Inspection, User as AppUser, Location, Person, Finding, InspectionWindow } from '../types';
+import { Inspection, User as AppUser, Location, Person, Finding, InspectionWindow, FiscalYearConfig } from '../types';
+import { computeFYRange } from './SettingsTab';
 
 interface InspectionTabProps {
   currentUser: AppUser;
@@ -18,6 +19,7 @@ interface InspectionTabProps {
   onUpdateInspection: (updated: Inspection) => void;
   onAddWindow: (w: InspectionWindow) => void;
   onUpdateWindow: (w: InspectionWindow) => void;
+  fiscalYear: FiscalYearConfig;
 }
 
 const CATEGORIES = ['fire safety', 'biosafety', 'chemical safety', 'housekeeping', 'electrical', 'general'];
@@ -58,6 +60,59 @@ const formatMonthYear = (dateStr: string): string => {
   return d.toLocaleString('en', { month: 'short', year: 'numeric' });
 };
 
+// Check if location's inspectionStartMonth is within the next 7 days
+const isUpcomingInspection = (loc: Location): boolean => {
+  if (!loc.inspectionStartMonth) return false;
+  const startDate = new Date(loc.inspectionStartMonth + '-01');
+  const today = new Date();
+  const weekFromNow = new Date();
+  weekFromNow.setDate(today.getDate() + 7);
+  // Show if start month is this month or next month, and we're within 7 days of the start
+  const startMonth = new Date(loc.inspectionStartMonth + '-01');
+  const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  return startMonth.getTime() === currentMonth.getTime() || startMonth.getTime() === nextMonth.getTime();
+};
+
+// Classify location status for inspection workflow
+type LocationClassification = 'inactive' | 'awaiting_reply' | 'scheduled' | 'needs_scheduling' | 'completed';
+const classifyLocation = (loc: Location, inspections: Inspection[], windows: InspectionWindow[]): LocationClassification => {
+  // Inactive or decommissioned
+  if (loc.status !== 'Active') return 'inactive';
+  
+  // Check if there's an open booking window for this location
+  const locWindows = windows.filter(w => {
+    if (w.status !== 'open') return false;
+    // Check if any of the window's locations match (by checking title for room info)
+    const windowLocPattern = `${loc.building} Rm ${loc.roomNumber}`;
+    return w.title.includes(windowLocPattern);
+  });
+  if (locWindows.length > 0) return 'awaiting_reply';
+  
+  // Check for scheduled inspections
+  const locInspections = inspections.filter(i => i.locationId === loc.id && i.inspectionType !== 'night');
+  const scheduled = locInspections.filter(i => i.inspectionStatus === 'scheduled' || i.status === 'pending');
+  if (scheduled.length > 0) return 'scheduled';
+  
+  // Check if completed this year
+  const completed = locInspections.filter(i => 
+    i.status === 'completed' || i.inspectionStatus === 'closed' || i.inspectionStatus === 'issued'
+  );
+  const required = getRequiredInspections(loc);
+  if (completed.length >= required) return 'completed';
+  
+  // Needs scheduling
+  return 'needs_scheduling';
+};
+
+const CLASSIFICATION_CONFIG: Record<LocationClassification, { label: string; color: string; bgColor: string }> = {
+  inactive: { label: 'Inactive/Renovation', color: 'text-slate-400', bgColor: 'bg-slate-950' },
+  awaiting_reply: { label: 'Awaiting Reply', color: 'text-amber-200', bgColor: 'bg-amber-950/80' },
+  scheduled: { label: 'Scheduled', color: 'text-sky-200', bgColor: 'bg-sky-950/80' },
+  needs_scheduling: { label: 'Needs Scheduling', color: 'text-rose-200', bgColor: 'bg-rose-950/80' },
+  completed: { label: 'Completed', color: 'text-emerald-200', bgColor: 'bg-emerald-950/80' }
+};
+
 const STATUS_LABELS: Record<string, string> = {
   scheduled: 'Scheduled',
   ready_to_go: 'Ready to Go',
@@ -80,12 +135,65 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function InspectionTab({
   currentUser, inspections, locations, persons, windows,
-  onAddInspection, onUpdateFindings, onUpdateInspection, onAddWindow, onUpdateWindow
+  onAddInspection, onUpdateFindings, onUpdateInspection, onAddWindow, onUpdateWindow,
+  fiscalYear
 }: InspectionTabProps) {
   // View navigation: dashboard → department → detail
   const [view, setView] = useState<'dashboard' | 'department' | 'detail'>('dashboard');
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedInspectionId, setSelectedInspectionId] = useState<string | null>(null);
+
+  // Collapsible pipeline sections (default all expanded)
+  const [sectionOpen, setSectionOpen] = useState<Record<string, boolean>>({
+    needsInspection: true, bookingWindows: true, scheduled: true, records: true
+  });
+  const toggleSection = (key: string) => setSectionOpen(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // Date range filter for Sections 3 & 4
+  type Preset = 'thisFY' | 'lastFY' | 'Q1' | 'Q2' | 'Q3' | 'Q4' | 'custom';
+  const [datePreset, setDatePreset] = useState<Preset>('thisFY');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+
+  // Compute the active date range based on preset + fiscalYear
+  const activeDateRange = React.useMemo(() => {
+    const fyRange = computeFYRange(fiscalYear);
+    const fyStartYear = fyRange.startYear;
+    const fyEndYear = fyRange.endYear;
+    const fyS = fyRange.start;
+    const fyE = fyRange.end;
+
+    switch (datePreset) {
+      case 'thisFY': return { start: fyS, end: fyE };
+      case 'lastFY': {
+        const lastS = `${fyStartYear - 1}-${String(fiscalYear.startMonth).padStart(2, '0')}-${String(fiscalYear.startDay).padStart(2, '0')}`;
+        const lastE = `${fyEndYear - 1}-${String(fiscalYear.endMonth).padStart(2, '0')}-${String(fiscalYear.endDay).padStart(2, '0')}`;
+        return { start: lastS, end: lastE };
+      }
+      case 'Q1': return { start: fyS, end: `${fyStartYear}-${String(fiscalYear.startMonth + 2).padStart(2, '0')}-${String(fiscalYear.startDay).padStart(2, '0')}` };
+      case 'Q2': {
+        const q2sMonth = fiscalYear.startMonth + 3;
+        const q2sYear = q2sMonth > 12 ? fyStartYear + 1 : fyStartYear;
+        const q2eMonth = fiscalYear.startMonth + 5;
+        const q2eYear = q2eMonth > 12 ? fyStartYear + 1 : fyStartYear;
+        return { start: `${q2sYear}-${String(q2sMonth > 12 ? q2sMonth - 12 : q2sMonth).padStart(2, '0')}-${String(fiscalYear.startDay).padStart(2, '0')}`, end: `${q2eYear}-${String(q2eMonth > 12 ? q2eMonth - 12 : q2eMonth).padStart(2, '0')}-${String(fiscalYear.startDay).padStart(2, '0')}` };
+      }
+      case 'Q3': {
+        const q3sMonth = fiscalYear.startMonth + 6;
+        const q3sYear = q3sMonth > 12 ? fyStartYear + 1 : fyStartYear;
+        const q3eMonth = fiscalYear.startMonth + 8;
+        const q3eYear = q3eMonth > 12 ? fyStartYear + 1 : fyStartYear;
+        return { start: `${q3sYear}-${String(q3sMonth > 12 ? q3sMonth - 12 : q3sMonth).padStart(2, '0')}-${String(fiscalYear.startDay).padStart(2, '0')}`, end: `${q3eYear}-${String(q3eMonth > 12 ? q3eMonth - 12 : q3eMonth).padStart(2, '0')}-${String(fiscalYear.startDay).padStart(2, '0')}` };
+      }
+      case 'Q4': {
+        const q4sMonth = fiscalYear.startMonth + 9;
+        const q4sYear = q4sMonth > 12 ? fyStartYear + 1 : fyStartYear;
+        return { start: `${q4sYear}-${String(q4sMonth > 12 ? q4sMonth - 12 : q4sMonth).padStart(2, '0')}-${String(fiscalYear.startDay).padStart(2, '0')}`, end: fyE };
+      }
+      case 'custom': return { start: customStart, end: customEnd };
+      default: return { start: fyS, end: fyE };
+    }
+  }, [datePreset, fiscalYear, customStart, customEnd]);
 
   // Schedule form
   const [isScheduling, setIsScheduling] = useState(false);
@@ -100,9 +208,62 @@ export default function InspectionTab({
   const [bwEnd, setBwEnd] = useState('');
   const [bwSlots, setBwSlots] = useState<string[]>(['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']);
   const [bwCustomSlot, setBwCustomSlot] = useState('');
+  const [bwReminders, setBwReminders] = useState<string[]>([]);
 
   const toggleLocSelection = (id: string) => {
     setSelectedLocIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = () => {
+    // Only select locations that need inspection (exclude scheduled and completed)
+    const scheduledLocIds = new Set(
+      inspections
+        .filter(i => i.inspectionStatus === 'scheduled' || i.inspectionStatus === 'ready_to_go')
+        .map(i => i.locationId)
+    );
+    const activeLocIds = deptLocations.filter(l => {
+      if (l.status !== 'Active') return false;
+      if (scheduledLocIds.has(l.id)) return false;
+      const locInspections = inspections.filter(i => i.locationId === l.id && i.inspectionType !== 'night');
+      const completed = locInspections.filter(i => i.status === 'completed' || i.inspectionStatus === 'closed' || i.inspectionStatus === 'issued').length;
+      const required = getRequiredInspections(l);
+      if (completed >= required) return false;
+      return true;
+    }).map(l => l.id);
+    const allSelected = activeLocIds.length > 0 && activeLocIds.every(id => selectedLocIds.includes(id));
+    if (allSelected) {
+      setSelectedLocIds(prev => prev.filter(id => !activeLocIds.includes(id)));
+    } else {
+      setSelectedLocIds(prev => [...new Set([...prev, ...activeLocIds])]);
+    }
+  };
+
+  // Check for overlapping booking windows
+  // Only shows a reminder if the SAME FTM has overlapping windows (they may want to fill up available slots)
+  // Different FTMs can open overlapping periods with no notification
+  const getOverlappingBookings = (locIds: string[], startDate: string, endDate: string, timeSlots: string[]): { reminders: string[] } => {
+    const reminders: string[] = [];
+    
+    windows.filter(w => w.status === 'open').forEach(w => {
+      // Only remind if the SAME FTM opened the window
+      if (w.openedById !== currentUser.id) return;
+      
+      // Check date overlap
+      const wStart = new Date(w.startDate);
+      const wEnd = new Date(w.endDate);
+      const newStart = new Date(startDate);
+      const newEnd = new Date(endDate);
+      
+      if (newStart <= wEnd && newEnd >= wStart) {
+        // Check time slot overlap
+        const hasTimeOverlap = w.timeSlots.some(slot => timeSlots.includes(slot));
+        if (hasTimeOverlap) {
+          reminders.push(`${w.department}: ${w.startDate} to ${w.endDate} (${w.timeSlots.join(', ')})`);
+        }
+      }
+    });
+    
+    return { reminders };
   };
 
   const handleOpenBookingWindow = () => {
@@ -125,7 +286,7 @@ export default function InspectionTab({
     };
     onAddWindow(newWindow);
     setShowBookingModal(false);
-    setBwStart(''); setBwEnd(''); setSelectedLocIds([]);
+    setBwStart(''); setBwEnd(''); setSelectedLocIds([]); setBwConflicts([]); setBwInfo([]);
   };
 
   // Finding draft
@@ -457,8 +618,33 @@ export default function InspectionTab({
       )}
 
       {/* ===== DEPARTMENT VIEW ===== */}
-      {view === 'department' && (
+      {view === 'department' && (() => {
+        const deptWindows = windows.filter(w => w.department === selectedDept);
+        const deptScheduled = deptInspections.filter(i => i.inspectionStatus === 'scheduled' || i.inspectionStatus === 'ready_to_go');
+        const deptRecords = deptInspections.filter(i => {
+          if (i.inspectionStatus !== 'closed' && i.inspectionStatus !== 'issued' && i.status !== 'completed') return false;
+          if (!i.date) return false;
+          if (activeDateRange.start && activeDateRange.end) return i.date >= activeDateRange.start && i.date <= activeDateRange.end;
+          return true;
+        });
+        // Section 1: Locations that need inspection (exclude those already scheduled or completed)
+        const scheduledLocIds = new Set(deptScheduled.map(i => i.locationId));
+        const needsInspectionLocs = deptLocations.filter(l => {
+          if (l.status !== 'Active') return false;
+          // Exclude if already scheduled
+          if (scheduledLocIds.has(l.id)) return false;
+          // Exclude if already completed required inspections this year
+          const locInspections = deptInspections.filter(i => i.locationId === l.id && i.inspectionType !== 'night');
+          const completed = locInspections.filter(i => i.status === 'completed' || i.inspectionStatus === 'closed' || i.inspectionStatus === 'issued').length;
+          const required = getRequiredInspections(l);
+          if (completed >= required) return false;
+          return true;
+        });
+        const presetLabels: Record<Preset, string> = { thisFY: 'This FY', lastFY: 'Last FY', Q1: 'Q1', Q2: 'Q2', Q3: 'Q3', Q4: 'Q4', custom: 'Custom' };
+
+        return (
         <div className="space-y-4">
+          {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button onClick={() => setView('dashboard')} className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition">
@@ -483,20 +669,96 @@ export default function InspectionTab({
             </div>
           </div>
 
-          {/* Locations in this department */}
+          {/* Date Range Filter Bar */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Filter className="h-3.5 w-3.5 text-slate-500" />
+              <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mr-1">Date Range</span>
+              {(Object.keys(presetLabels) as Preset[]).map(p => (
+                <button key={p} onClick={() => setDatePreset(p)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition ${
+                    datePreset === p
+                      ? 'bg-indigo-600 border-indigo-500 text-white'
+                      : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                  }`}>
+                  {presetLabels[p]}
+                </button>
+              ))}
+              {datePreset === 'custom' && (
+                <div className="flex items-center gap-2 ml-2">
+                  <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
+                    className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-[10px] text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                  <span className="text-slate-500 text-[10px]">to</span>
+                  <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
+                    className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-[10px] text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                </div>
+              )}
+              {activeDateRange.start && activeDateRange.end && (
+                <span className="text-[10px] text-slate-500 ml-auto font-mono">{activeDateRange.start} → {activeDateRange.end}</span>
+              )}
+            </div>
+          </div>
+
+          {/* ── Section 1: Needs Inspection ── */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-800 text-[10px] uppercase font-bold text-slate-400 tracking-wider">Locations</div>
+            <button onClick={() => toggleSection('needsInspection')} className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-800/30 transition">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4 text-rose-400" />
+                <span className="text-[10px] uppercase font-bold text-slate-300 tracking-wider">Needs Inspection</span>
+                <span className="text-[9px] font-mono text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{needsInspectionLocs.length}</span>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${sectionOpen.needsInspection ? 'rotate-180' : ''}`} />
+            </button>
+            {sectionOpen.needsInspection && (<>
+            <div className="px-4 py-2 border-t border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {(() => {
+                  const activeLocIds = needsInspectionLocs.map(l => l.id);
+                  const allSelected = activeLocIds.length > 0 && activeLocIds.every(id => selectedLocIds.includes(id));
+                  const someSelected = selectedLocIds.length > 0 && !allSelected;
+                  return (
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input type="checkbox" checked={allSelected} ref={el => { if (el) el.indeterminate = someSelected; }} onChange={toggleSelectAll}
+                        className="h-3.5 w-3.5 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500/40 cursor-pointer" />
+                      <span className="text-[10px] text-slate-500 font-normal normal-case">Select all</span>
+                    </label>
+                  );
+                })()}
+              </div>
+              {needsInspectionLocs.filter(isUpcomingInspection).length > 0 && (
+                <span className="flex items-center gap-1 text-[10px] text-amber-400">
+                  <Bell className="h-3 w-3" />{needsInspectionLocs.filter(isUpcomingInspection).length} upcoming
+                </span>
+              )}
+            </div>
+            <div className="px-4 py-2 border-b border-slate-800/60 flex flex-wrap gap-2">
+              {Object.entries(CLASSIFICATION_CONFIG).map(([key, config]) => {
+                const count = needsInspectionLocs.filter(loc => classifyLocation(loc, inspections, windows) === key).length;
+                if (count === 0) return null;
+                return (
+                  <span key={key} className={`text-[9px] font-bold uppercase rounded px-2 py-0.5 border ${config.color} ${config.bgColor} border-current/20`}>
+                    {count} {config.label}
+                  </span>
+                );
+              })}
+            </div>
             <div className="divide-y divide-slate-800/60">
-              {deptLocations.map(loc => {
+              {needsInspectionLocs.length === 0 ? (
+                <div className="px-4 py-6 text-center text-xs text-slate-500">All locations are scheduled or completed.</div>
+              ) : needsInspectionLocs.map(loc => {
                 const locInspections = deptInspections.filter(i => i.locationId === loc.id && i.date?.startsWith(CURRENT_YEAR) && i.inspectionType !== 'night');
                 const required = getRequiredInspections(loc);
                 const done = locInspections.filter(i => i.status === 'completed' || i.inspectionStatus === 'closed' || i.inspectionStatus === 'issued').length;
                 const contact = persons.find(p => loc.piDelegateIds?.includes(p.id));
+                const pis = loc.piIds.map(pid => persons.find(p => p.id === pid)).filter(Boolean);
                 const nextDue = getNextInspectionDue(loc, inspections);
                 const todayStr = new Date().toISOString().split('T')[0];
                 const isOverdue = nextDue ? nextDue <= todayStr : true;
                 const isSelected = selectedLocIds.includes(loc.id);
                 const isActive = loc.status === 'Active';
+                const isUpcoming = isUpcomingInspection(loc);
+                const classification = classifyLocation(loc, inspections, windows);
+                const classConfig = CLASSIFICATION_CONFIG[classification];
                 return (
                   <div key={loc.id} className={`px-4 py-3 flex items-center justify-between transition ${isSelected ? 'bg-emerald-950/20' : 'hover:bg-slate-800/20'} ${!isActive ? 'opacity-60' : ''}`}>
                     <div className="flex items-center gap-3">
@@ -506,7 +768,9 @@ export default function InspectionTab({
                       <div>
                         <span className="text-xs font-semibold text-slate-200">{loc.building} Rm {loc.roomNumber}</span>
                         <span className="text-[10px] text-slate-500 ml-2">{loc.roomNature}</span>
-                        {!isActive && <span className="text-[9px] font-bold uppercase text-rose-300 bg-slate-900/80 border border-rose-500/30 rounded px-1.5 py-0.5 ml-2">{loc.status}</span>}
+                        {!isActive && <span className="text-[9px] font-bold uppercase text-rose-200 bg-rose-950/80 border border-rose-500/30 rounded px-1.5 py-0.5 ml-2">{loc.status}</span>}
+                        {isUpcoming && <span className="text-[9px] font-bold uppercase text-amber-200 bg-amber-950/80 border border-amber-500/30 rounded px-1.5 py-0.5 ml-2">Starts {loc.inspectionStartMonth}</span>}
+                        <span className={`text-[9px] font-bold uppercase rounded px-1.5 py-0.5 ml-2 border ${classConfig.color} ${classConfig.bgColor} border-current/20`}>{classConfig.label}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-[10px] text-slate-400">
@@ -518,22 +782,29 @@ export default function InspectionTab({
                       )}
                       {!nextDue && <span className="text-rose-300 font-mono">Never inspected</span>}
                       {contact && <span className="text-slate-500">Contact: {contact.name}</span>}
+                      {pis.length > 0 && <span className="text-slate-500">PI: {pis.map(p => p!.name).join(', ')}</span>}
                     </div>
                   </div>
                 );
               })}
             </div>
+            </>)}
           </div>
 
-          {/* Booking windows for this department */}
-          {(() => {
-            const deptWindows = windows.filter(w => w.department === selectedDept);
-            if (deptWindows.length === 0) return null;
-            return (
-              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-800 text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
-                  <CalendarClock className="h-3.5 w-3.5 text-emerald-400" /> Booking Windows
-                </div>
+          {/* ── Section 2: Booking Windows ── */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <button onClick={() => toggleSection('bookingWindows')} className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-800/30 transition">
+              <div className="flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 text-emerald-400" />
+                <span className="text-[10px] uppercase font-bold text-slate-300 tracking-wider">Booking Windows</span>
+                <span className="text-[9px] font-mono text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{deptWindows.length}</span>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${sectionOpen.bookingWindows ? 'rotate-180' : ''}`} />
+            </button>
+            {sectionOpen.bookingWindows && (
+              deptWindows.length === 0 ? (
+                <div className="px-4 py-6 text-center text-xs text-slate-500">No booking windows opened for this department yet.</div>
+              ) : (
                 <div className="divide-y divide-slate-800/60">
                   {deptWindows.map(w => (
                     <div key={w.id} className="px-4 py-3 flex items-center justify-between">
@@ -556,41 +827,91 @@ export default function InspectionTab({
                     </div>
                   ))}
                 </div>
-              </div>
-            );
-          })()}
+              )
+            )}
+          </div>
 
-          {/* Inspections list for this department */}
+          {/* ── Section 3: Scheduled Inspections ── */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-800 text-[10px] uppercase font-bold text-slate-400 tracking-wider">Inspection Records ({CURRENT_YEAR})</div>
-            {deptInspections.length === 0 ? (
-              <div className="px-4 py-8 text-center text-xs text-slate-500">No inspections recorded for this department.</div>
-            ) : (
-              <div className="divide-y divide-slate-800/60">
-                {deptInspections.map(insp => {
-                  const loc = locations.find(l => l.id === insp.locationId);
-                  return (
-                    <button key={insp.id}
-                      onClick={() => { setSelectedInspectionId(insp.id); setView('detail'); }}
-                      className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-800/20 transition text-left">
-                      <div className="flex items-center gap-3">
-                        {insp.inspectionType === 'night' ? <Moon className="h-3.5 w-3.5 text-purple-400" /> : <Sun className="h-3.5 w-3.5 text-amber-300" />}
-                        <div>
-                          <span className="text-xs font-semibold text-slate-200">{loc ? `${loc.building} Rm ${loc.roomNumber}` : insp.title}</span>
-                          <span className="text-[10px] text-slate-500 block">{insp.date} — {insp.inspectorName}</span>
-                        </div>
-                      </div>
-                      <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-bold uppercase border ${STATUS_COLORS[insp.inspectionStatus || ''] || 'bg-slate-800 text-slate-400 border-slate-700'}`}>
-                        {STATUS_LABELS[insp.inspectionStatus || ''] || insp.status}
-                      </span>
-                    </button>
-                  );
-                })}
+            <button onClick={() => toggleSection('scheduled')} className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-800/30 transition">
+              <div className="flex items-center gap-2">
+                <CalendarCheck className="h-4 w-4 text-sky-400" />
+                <span className="text-[10px] uppercase font-bold text-slate-300 tracking-wider">Scheduled Inspections</span>
+                <span className="text-[9px] font-mono text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{deptScheduled.length}</span>
               </div>
+              <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${sectionOpen.scheduled ? 'rotate-180' : ''}`} />
+            </button>
+            {sectionOpen.scheduled && (
+              deptScheduled.length === 0 ? (
+                <div className="px-4 py-6 text-center text-xs text-slate-500">No inspections currently scheduled.</div>
+              ) : (
+                <div className="divide-y divide-slate-800/60">
+                  {deptScheduled.sort((a, b) => (a.date || '').localeCompare(b.date || '')).map(insp => {
+                    const loc = locations.find(l => l.id === insp.locationId);
+                    const contact = loc ? persons.find(p => loc.piDelegateIds?.includes(p.id)) : null;
+                    return (
+                      <button key={insp.id}
+                        onClick={() => { setSelectedInspectionId(insp.id); setView('detail'); }}
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-800/20 transition text-left">
+                        <div className="flex items-center gap-3">
+                          {insp.inspectionType === 'night' ? <Moon className="h-3.5 w-3.5 text-purple-400" /> : <Sun className="h-3.5 w-3.5 text-amber-300" />}
+                          <div>
+                            <span className="text-xs font-semibold text-slate-200">{loc ? `${loc.building} Rm ${loc.roomNumber}` : insp.title}</span>
+                            <span className="text-[10px] text-slate-500 block">{insp.date} — {insp.inspectorName}{contact ? ` · Contact: ${contact.name}` : ''}</span>
+                          </div>
+                        </div>
+                        <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-bold uppercase border ${STATUS_COLORS[insp.inspectionStatus || ''] || 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                          {STATUS_LABELS[insp.inspectionStatus || ''] || insp.status}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )
+            )}
+          </div>
+
+          {/* ── Section 4: Inspection Records ── */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <button onClick={() => toggleSection('records')} className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-800/30 transition">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-indigo-400" />
+                <span className="text-[10px] uppercase font-bold text-slate-300 tracking-wider">Inspection Records</span>
+                <span className="text-[9px] font-mono text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{deptRecords.length}</span>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${sectionOpen.records ? 'rotate-180' : ''}`} />
+            </button>
+            {sectionOpen.records && (
+              deptRecords.length === 0 ? (
+                <div className="px-4 py-6 text-center text-xs text-slate-500">No inspection records in the selected date range.</div>
+              ) : (
+                <div className="divide-y divide-slate-800/60">
+                  {deptRecords.sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(insp => {
+                    const loc = locations.find(l => l.id === insp.locationId);
+                    return (
+                      <button key={insp.id}
+                        onClick={() => { setSelectedInspectionId(insp.id); setView('detail'); }}
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-800/20 transition text-left">
+                        <div className="flex items-center gap-3">
+                          {insp.inspectionType === 'night' ? <Moon className="h-3.5 w-3.5 text-purple-400" /> : <Sun className="h-3.5 w-3.5 text-amber-300" />}
+                          <div>
+                            <span className="text-xs font-semibold text-slate-200">{loc ? `${loc.building} Rm ${loc.roomNumber}` : insp.title}</span>
+                            <span className="text-[10px] text-slate-500 block">{insp.date} — {insp.inspectorName}</span>
+                          </div>
+                        </div>
+                        <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-bold uppercase border ${STATUS_COLORS[insp.inspectionStatus || ''] || 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                          {STATUS_LABELS[insp.inspectionStatus || ''] || insp.status}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ===== DETAIL VIEW ===== */}
       {view === 'detail' && selectedInspection && (
@@ -817,15 +1138,27 @@ export default function InspectionTab({
             <div className="space-y-4">
               <div>
                 <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Selected Locations ({selectedLocIds.length})</label>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="space-y-2">
                   {selectedLocIds.map(id => {
                     const l = locations.find(x => x.id === id);
-                    return l ? (
-                      <span key={id} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-900/80 border border-emerald-500/30 text-[10px] font-semibold text-emerald-300">
-                        {l.building} Rm {l.roomNumber}
-                        <button onClick={() => toggleLocSelection(id)} className="text-emerald-500 hover:text-rose-300"><X className="h-2.5 w-2.5" /></button>
-                      </span>
-                    ) : null;
+                    if (!l) return null;
+                    const locPis = l.piIds.map(pid => persons.find(p => p.id === pid)).filter(Boolean);
+                    const locContact = persons.find(p => l.piDelegateIds?.includes(p.id));
+                    return (
+                      <div key={id} className="flex items-start justify-between gap-2 px-3 py-2 rounded bg-slate-900/80 border border-emerald-500/30">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-semibold text-emerald-300">{l.building} Rm {l.roomNumber}</span>
+                            <span className="text-[9px] text-slate-500">{l.roomNature}</span>
+                            <button onClick={() => toggleLocSelection(id)} className="text-emerald-500 hover:text-rose-300 ml-auto"><X className="h-2.5 w-2.5" /></button>
+                          </div>
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[9px] text-slate-500">
+                            {locPis.length > 0 && <span>PI: {locPis.map(p => p!.name).join(', ')}</span>}
+                            {locContact && <span>Contact: {locContact.name}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    );
                   })}
                 </div>
               </div>
@@ -833,15 +1166,31 @@ export default function InspectionTab({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Booking Opens *</label>
-                  <input type="date" value={bwStart} onChange={e => setBwStart(e.target.value)}
+                  <input type="date" value={bwStart} onChange={e => { setBwStart(e.target.value); if (e.target.value && bwEnd) { const result = getOverlappingBookings(selectedLocIds, e.target.value, bwEnd, bwSlots); setBwReminders(result.reminders); } }}
                     className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none" />
                 </div>
                 <div>
                   <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Booking Closes *</label>
-                  <input type="date" value={bwEnd} onChange={e => setBwEnd(e.target.value)}
+                  <input type="date" value={bwEnd} onChange={e => { setBwEnd(e.target.value); if (bwStart && e.target.value) { const result = getOverlappingBookings(selectedLocIds, bwStart, e.target.value, bwSlots); setBwReminders(result.reminders); } }}
                     className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none" />
                 </div>
               </div>
+
+              {bwReminders.length > 0 && (
+                <div className="p-3 bg-amber-950/60 border border-amber-500/30 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Bell className="h-4 w-4 text-amber-300" />
+                    <span className="text-[10px] font-bold text-amber-200 uppercase">Overlapping Window Reminder</span>
+                  </div>
+                  <div className="space-y-1">
+                    {bwReminders.map((item, i) => (
+                      <p key={i} className="text-[10px] text-amber-200">• You already have a window: {item}</p>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-amber-300 mt-2">This is just a reminder — you may proceed if you intend to fill available slots.</p>
+                </div>
+              )}
+
 
               <div>
                 <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Available Time Slots</label>

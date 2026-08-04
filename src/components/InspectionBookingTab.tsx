@@ -21,10 +21,10 @@ export default function InspectionBookingTab({
   // self-identification step, so a user can never book as someone else.
   const matchedPerson = persons.find(p => p.name === currentUser.name || p.email === currentUser.email);
 
-  // Department user: booking form (one time slot + one or more locations)
+  // Department user: booking form (multiple time slots + one or more locations)
   const [bookingWindowId, setBookingWindowId] = useState<string | null>(null);
-  const [bookDate, setBookDate] = useState('');
-  const [bookTime, setBookTime] = useState('');
+  const [bookDates, setBookDates] = useState<string[]>([]);
+  const [bookTimes, setBookTimes] = useState<string[]>([]);
   const [bookLocationIds, setBookLocationIds] = useState<string[]>([]);
 
   // Resolve the active person & department (standalone identity is the signed-in user)
@@ -33,8 +33,21 @@ export default function InspectionBookingTab({
     : persons.find(p => p.name === currentUser.name || p.id === currentUser.id) || null;
   const userDepartment = activePerson?.department || '';
 
-  // Windows visible to the department user (their department only)
-  const myWindows = windows.filter(w => w.department === userDepartment);
+  // Windows visible to the department user (their department only, and only if they are PI or contact for the locations)
+  const myWindows = windows.filter(w => {
+    if (w.department !== userDepartment) return false;
+    // Check if user is PI or contact for any location in this window
+    const pid = activePerson?.id;
+    if (!pid) return false;
+    // Parse window title to get location names
+    const windowLocPattern = w.title.replace('Inspection Booking: ', '');
+    const windowLocs = locations.filter(l => {
+      const locPattern = `${l.building} Rm ${l.roomNumber}`;
+      return windowLocPattern.includes(locPattern);
+    });
+    // Check if user is PI or delegate for any of these locations
+    return windowLocs.some(l => l.piIds.includes(pid) || l.piDelegateIds.includes(pid));
+  });
 
   const openWindows = myWindows.filter(w => w.status === 'open');
   const closedWindows = myWindows.filter(w => w.status === 'closed');
@@ -54,13 +67,20 @@ export default function InspectionBookingTab({
     return dates;
   };
 
-  // --- Department user: Book a slot ---
+  // --- Department user: Book slots ---
   const bookingWindow = windows.find(w => w.id === bookingWindowId);
-  const bookingDates = bookingWindow ? getDatesInRange(bookingWindow.startDate, bookingWindow.endDate) : [];
+  const availableDates = bookingWindow ? getDatesInRange(bookingWindow.startDate, bookingWindow.endDate) : [];
 
-  // Check if a slot is already taken
-  const isSlotTaken = (w: InspectionWindow, date: string, time: string) =>
-    w.bookings.some(b => b.date === date && b.time === time);
+  // Check if a time slot has already been booked by someone else
+  // Once a slot is booked, it's exclusive to that booking (no other PI can book the same slot)
+  const isSlotBooked = (w: InspectionWindow, date: string, time: string): boolean => {
+    return w.bookings.some(b => b.date === date && b.time === time);
+  };
+
+  // Check if a slot is fully booked (already taken by another booking)
+  const isSlotFull = (w: InspectionWindow, date: string, time: string): boolean => {
+    return isSlotBooked(w, date, time);
+  };
 
   // A location can only be inspected once per window — once booked it cannot be
   // booked again at another date/time.
@@ -70,51 +90,70 @@ export default function InspectionBookingTab({
   const toggleBookLocation = (id: string) =>
     setBookLocationIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
+  const toggleBookDate = (date: string) =>
+    setBookDates(prev => prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]);
+
+  const toggleBookTime = (time: string) =>
+    setBookTimes(prev => prev.includes(time) ? prev.filter(t => t !== time) : [...prev, time]);
+
+  const selectAllLocations = () => {
+    const allLocIds = bookingLocations.filter(l => !isLocationBooked(bookingWindow!, l.id)).map(l => l.id);
+    setBookLocationIds(allLocIds);
+  };
+
   const handleBook = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bookingWindow || !bookDate || !bookTime || bookLocationIds.length === 0) return;
+    if (!bookingWindow || bookDates.length === 0 || bookTimes.length === 0 || bookLocationIds.length === 0) return;
 
     const bookedByName = standalone ? (activePerson?.name || 'Department User') : currentUser.name;
-    const inspectionIds: string[] = [];
+    const newBookings: InspectionBooking[] = [];
+    let inspCounter = 0;
 
-    // One inspection record per location, all sharing the same date/time slot
-    bookLocationIds.forEach((locId, idx) => {
-      const loc = locations.find(l => l.id === locId);
-      const newInsp: Inspection = {
-        id: `insp_${Date.now()}_${idx}`,
-        title: `${loc?.building || ''} Rm ${loc?.roomNumber || ''} — Scheduled Inspection`,
-        date: bookDate,
-        inspectorId: bookingWindow.openedById,
-        inspectorName: bookingWindow.openedBy,
-        ftmId: bookingWindow.openedById,
-        status: 'pending',
-        inspectionStatus: 'scheduled',
-        inspectionType: 'scheduled',
-        department: bookingWindow.department,
-        score: 100,
-        findings: [],
-        locationId: locId,
-        scheduledMonth: `${new Date(bookDate).toLocaleString('en', { month: 'long' })} ${new Date(bookDate).getFullYear()}`,
-        appointmentDate: bookDate
-      };
-      inspectionIds.push(newInsp.id);
-      onAddInspection(newInsp, `Inspection booked by ${bookedByName} for ${loc?.building} Rm ${loc?.roomNumber} on ${bookDate} at ${bookTime}`);
+    // Create a booking for each date/time combination
+    bookDates.forEach(date => {
+      bookTimes.forEach(time => {
+        const inspectionIds: string[] = [];
+        // One inspection record per location for this date/time
+        bookLocationIds.forEach((locId) => {
+          const loc = locations.find(l => l.id === locId);
+          const newInsp: Inspection = {
+            id: `insp_${Date.now()}_${inspCounter++}`,
+            title: `${loc?.building || ''} Rm ${loc?.roomNumber || ''} — Scheduled Inspection`,
+            date: date,
+            inspectorId: bookingWindow.openedById,
+            inspectorName: bookingWindow.openedBy,
+            ftmId: bookingWindow.openedById,
+            status: 'pending',
+            inspectionStatus: 'scheduled',
+            inspectionType: 'scheduled',
+            department: bookingWindow.department,
+            score: 100,
+            findings: [],
+            locationId: locId,
+            scheduledMonth: `${new Date(date).toLocaleString('en', { month: 'long' })} ${new Date(date).getFullYear()}`,
+            appointmentDate: date
+          };
+          inspectionIds.push(newInsp.id);
+          onAddInspection(newInsp, `Inspection booked by ${bookedByName} for ${loc?.building} Rm ${loc?.roomNumber} on ${date} at ${time}`);
+        });
+
+        const booking: InspectionBooking = {
+          id: 'ibk_' + Date.now() + '_' + date + '_' + time,
+          date: date,
+          time: time,
+          locationIds: bookLocationIds,
+          bookedBy: activePerson?.id || currentUser.id,
+          bookedByName,
+          inspectionIds
+        };
+        newBookings.push(booking);
+      });
     });
 
-    // A single booking = one time slot covering one or more locations
-    const booking: InspectionBooking = {
-      id: 'ibk_' + Date.now(),
-      date: bookDate,
-      time: bookTime,
-      locationIds: bookLocationIds,
-      bookedBy: activePerson?.id || currentUser.id,
-      bookedByName,
-      inspectionIds
-    };
-    onUpdateWindow({ ...bookingWindow, bookings: [...bookingWindow.bookings, booking] });
+    onUpdateWindow({ ...bookingWindow, bookings: [...bookingWindow.bookings, ...newBookings] });
 
     setBookingWindowId(null);
-    setBookDate(''); setBookTime(''); setBookLocationIds([]);
+    setBookDates([]); setBookTimes([]); setBookLocationIds([]);
   };
 
   // Locations available for booking (in the window's department, restricted to user's associated locations)
@@ -180,11 +219,23 @@ export default function InspectionBookingTab({
               const dates = getDatesInRange(w.startDate, w.endDate);
               const totalSlots = dates.length * w.timeSlots.length;
               const takenSlots = w.bookings.length;
+              // Filter locations in this window to only those the viewing user is PI/delegate for
+              const pid = activePerson?.id;
+              const windowLocPattern = w.title.replace('Inspection Booking: ', '');
+              const userLocNames = locations.filter(l => {
+                const locPattern = `${l.building} Rm ${l.roomNumber}`;
+                if (!windowLocPattern.includes(locPattern)) return false;
+                if (!pid) return false;
+                return l.piIds.includes(pid) || l.piDelegateIds?.includes(pid);
+              }).map(l => `${l.building} Rm ${l.roomNumber}`);
+              const displayTitle = userLocNames.length > 0
+                ? `Inspection Booking: ${userLocNames.join(', ')}`
+                : w.title;
               return (
                 <div key={w.id} className="bg-slate-900 border border-emerald-900/30 rounded-xl p-5 space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-slate-100">{w.title}</h3>
+                      <h3 className="text-sm font-bold text-slate-100">{displayTitle}</h3>
                       <p className="text-[11px] text-slate-400 mt-0.5">{w.department}</p>
                     </div>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase border bg-emerald-950/40 text-emerald-300 border-emerald-900/30">
@@ -202,30 +253,78 @@ export default function InspectionBookingTab({
                     <span className="font-mono">{takenSlots}/{totalSlots} slots booked</span>
                   </div>
 
-                  {/* Bookings list */}
-                  {w.bookings.length > 0 && (
-                    <div className="border-t border-slate-800 pt-2 space-y-1">
-                      {w.bookings.map(b => {
-                        const locs = (b.locationIds || []).map(id => locations.find(l => l.id === id)).filter(Boolean);
-                        return (
-                          <div key={b.id} className="flex items-start gap-2 text-[10px] text-slate-400">
-                            <Check className="h-3 w-3 text-emerald-300 shrink-0 mt-0.5" />
-                            <div>
-                              <span className="text-slate-300 font-semibold">{b.date} {b.time}</span>
-                              <span> — {locs.map(l => `${l!.building} Rm ${l!.roomNumber}`).join(', ') || 'Unknown'}</span>
-                              <span className="text-slate-600"> ({b.bookedByName})</span>
+                  {/* User's bookings in this window */}
+                  {(() => {
+                    const pid = activePerson?.id;
+                    const pname = activePerson?.name;
+                    const userBookings = w.bookings.filter(b => {
+                      // Match by person ID or name
+                      if (pid && b.bookedBy === pid) return true;
+                      if (pname && b.bookedByName === pname) return true;
+                      // Also match if user is PI or contact for any booked location
+                      if (pid && b.locationIds) {
+                        return b.locationIds.some(locId => {
+                          const loc = locations.find(l => l.id === locId);
+                          return loc && (loc.piIds.includes(pid) || loc.piDelegateIds.includes(pid));
+                        });
+                      }
+                      return false;
+                    });
+                    if (userBookings.length === 0) return null;
+                    return (
+                      <div className="border-t border-slate-800 pt-2 space-y-1">
+                        <span className="text-[9px] font-bold uppercase text-slate-500">Your Bookings</span>
+                        {userBookings.map(b => {
+                          const locs = (b.locationIds || []).map(id => locations.find(l => l.id === id)).filter(Boolean);
+                          return (
+                            <div key={b.id} className="text-[10px] text-slate-400">
+                              <div className="flex items-start gap-2">
+                                <Check className="h-3 w-3 text-emerald-300 shrink-0 mt-0.5" />
+                                <div>
+                                  <span className="text-slate-300 font-semibold">{b.date} {b.time}</span>
+                                </div>
+                              </div>
+                              {locs.map(l => (
+                                <div key={l!.id} className="pl-5 text-slate-400">
+                                  • {l!.building} Rm {l!.roomNumber} <span className="text-slate-600">({l!.roomNature})</span>
+                                </div>
+                              ))}
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
 
-                  {/* Book button */}
-                  <button onClick={() => { setBookingWindowId(w.id); setBookDate(''); setBookTime(''); setBookLocationIds([]); }}
-                    className="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
-                    Book a Slot
-                  </button>
+                  {/* Book button or already booked message */}
+                  {(() => {
+                    const pid = activePerson?.id;
+                    const pname = activePerson?.name;
+                    const userBookings = w.bookings.filter(b => {
+                      if (pid && b.bookedBy === pid) return true;
+                      if (pname && b.bookedByName === pname) return true;
+                      if (pid && b.locationIds) {
+                        return b.locationIds.some(locId => {
+                          const loc = locations.find(l => l.id === locId);
+                          return loc && (loc.piIds.includes(pid) || loc.piDelegateIds.includes(pid));
+                        });
+                      }
+                      return false;
+                    });
+                    if (userBookings.length > 0) {
+                      return (
+                        <div className="w-full py-2 rounded-lg bg-slate-800/60 text-slate-400 text-xs font-bold text-center">
+                          ✓ Booked — Email {w.openedBy} for changes
+                        </div>
+                      );
+                    }
+                    return (
+                      <button onClick={() => { setBookingWindowId(w.id); setBookDates([]); setBookTimes([]); setBookLocationIds([]); }}
+                        className="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
+                        Book a Slot
+                      </button>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -245,17 +344,30 @@ export default function InspectionBookingTab({
         <div className="space-y-3">
           <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Closed Windows</span>
           <div className="space-y-2">
-            {closedWindows.map(w => (
+            {closedWindows.map(w => {
+              const pid = activePerson?.id;
+              const windowLocPattern = w.title.replace('Inspection Booking: ', '');
+              const userLocNames = locations.filter(l => {
+                const locPattern = `${l.building} Rm ${l.roomNumber}`;
+                if (!windowLocPattern.includes(locPattern)) return false;
+                if (!pid) return false;
+                return l.piIds.includes(pid) || l.piDelegateIds?.includes(pid);
+              }).map(l => `${l.building} Rm ${l.roomNumber}`);
+              const displayTitle = userLocNames.length > 0
+                ? `Inspection Booking: ${userLocNames.join(', ')}`
+                : w.title;
+              return (
               <div key={w.id} className="bg-slate-900/60 border border-slate-800 rounded-lg px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Lock className="h-3.5 w-3.5 text-slate-600" />
                   <div>
-                    <span className="text-xs font-semibold text-slate-400">{w.title}</span>
+                    <span className="text-xs font-semibold text-slate-400">{displayTitle}</span>
                     <span className="text-[10px] text-slate-600 block">{w.department} — {w.startDate} to {w.endDate} — {w.bookings.length} bookings</span>
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -282,16 +394,17 @@ export default function InspectionBookingTab({
               ) : (
               <>
               <div>
-                <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Date *</label>
+                <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Date(s) * <span className="normal-case font-medium text-slate-500">— select one or more</span></label>
                 <div className="grid grid-cols-5 gap-1.5">
-                  {bookingDates.map(d => {
+                  {availableDates.map(d => {
                     const dayName = new Date(d).toLocaleString('en', { weekday: 'short' });
                     const dayNum = new Date(d).getDate();
                     const monthShort = new Date(d).toLocaleString('en', { month: 'short' });
+                    const isSelected = bookDates.includes(d);
                     return (
-                      <button key={d} type="button" onClick={() => { setBookDate(d); setBookTime(''); }}
+                      <button key={d} type="button" onClick={() => toggleBookDate(d)}
                         className={`py-2 px-1 rounded-lg text-center border transition ${
-                          bookDate === d
+                          isSelected
                             ? 'bg-indigo-600 border-indigo-500 text-white'
                             : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'
                         }`}>
@@ -304,19 +417,20 @@ export default function InspectionBookingTab({
                 </div>
               </div>
 
-              {bookDate && (
+              {bookDates.length > 0 && (
                 <div>
-                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Time *</label>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Time(s) * <span className="normal-case font-medium text-slate-500">— select one or more (booked slots are exclusive)</span></label>
                   <div className="flex flex-wrap gap-2">
                     {bookingWindow.timeSlots.map(t => {
-                      const taken = isSlotTaken(bookingWindow, bookDate, t);
+                      // Check if this slot is full across all selected dates
+                      const allDatesFull = bookDates.every(d => isSlotFull(bookingWindow, d, t));
                       return (
-                        <button key={t} type="button" disabled={taken}
-                          onClick={() => setBookTime(t)}
+                        <button key={t} type="button" disabled={allDatesFull}
+                          onClick={() => toggleBookTime(t)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold border transition ${
-                            taken
+                            allDatesFull
                               ? 'bg-slate-800/40 border-slate-800 text-slate-600 cursor-not-allowed line-through'
-                              : bookTime === t
+                              : bookTimes.includes(t)
                                 ? 'bg-indigo-600 border-indigo-500 text-white'
                                 : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-indigo-500/50'
                           }`}>
@@ -328,11 +442,17 @@ export default function InspectionBookingTab({
                 </div>
               )}
 
-              {bookDate && bookTime && (
+              {bookDates.length > 0 && bookTimes.length > 0 && (
                 <div>
-                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">
-                    Location(s) * <span className="normal-case font-medium text-slate-500">— select one or more</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] text-slate-400 uppercase font-bold">
+                      Location(s) * <span className="normal-case font-medium text-slate-500">— select one or more</span>
+                    </label>
+                    <button type="button" onClick={selectAllLocations}
+                      className="text-[9px] font-bold text-indigo-400 hover:text-indigo-300 transition">
+                      Select all
+                    </button>
+                  </div>
                   <div className="space-y-1.5">
                     {bookingLocations.map(l => {
                       const booked = isLocationBooked(bookingWindow, l.id);
@@ -359,9 +479,9 @@ export default function InspectionBookingTab({
                 </div>
               )}
 
-              {bookDate && bookTime && bookLocationIds.length > 0 && (
-                <div className="p-3 bg-indigo-950/20 border border-indigo-900/30 rounded-lg text-[11px] text-indigo-200">
-                  Booking <span className="font-bold">{bookLocationIds.length}</span> location(s) on <span className="font-bold">{bookDate}</span> at <span className="font-bold">{bookTime}</span>
+              {bookDates.length > 0 && bookTimes.length > 0 && bookLocationIds.length > 0 && (
+                <div className="p-3 bg-indigo-950/80 border border-indigo-500/30 rounded-lg text-[11px] text-indigo-200">
+                  Booking <span className="font-bold">{bookLocationIds.length}</span> location(s) × <span className="font-bold">{bookDates.length}</span> date(s) × <span className="font-bold">{bookTimes.length}</span> time(s) = <span className="font-bold">{bookLocationIds.length * bookDates.length * bookTimes.length}</span> total inspection(s)
                 </div>
               )}
               </>
@@ -370,7 +490,7 @@ export default function InspectionBookingTab({
               <div className="flex gap-2 pt-2">
                 <button type="button" onClick={() => setBookingWindowId(null)}
                   className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-2 rounded-lg transition">Cancel</button>
-                <button type="submit" disabled={!bookDate || !bookTime || bookLocationIds.length === 0}
+                <button type="submit" disabled={bookDates.length === 0 || bookTimes.length === 0 || bookLocationIds.length === 0}
                   className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold py-2 rounded-lg transition">
                   Confirm Booking
                 </button>

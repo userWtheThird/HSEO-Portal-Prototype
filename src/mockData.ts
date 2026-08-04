@@ -38,12 +38,20 @@ export const SIMULATED_USERS: User[] = [
     title: 'Field Team Member'
   },
   {
+    id: 'user_ftm_2',
+    name: 'Vanessa CHENG',
+    email: 'ftm2@hseo-portal.net',
+    role: 'field_team_member',
+    avatarColor: 'bg-cyan-600 text-white',
+    title: 'Field Team Member'
+  },
+  {
     id: 'user_sarah',
     name: 'Sarah Jenkins',
     email: 'sarah.jenkins@hseo-portal.net',
-    role: 'admin',
+    role: 'PI',
     avatarColor: 'bg-emerald-600 text-white',
-    title: 'HSE Director & Chief Compliance Officer'
+    title: 'Professor — Principal Investigator'
   },
   {
     id: 'user_marcus',
@@ -124,6 +132,22 @@ export const SIMULATED_USERS: User[] = [
     role: 'Contact',
     avatarColor: 'bg-sky-600 text-white',
     title: 'Department of Physics — Research Associate'
+  },
+  {
+    id: 'user_tk_cheung',
+    name: 'TK Cheung',
+    email: 'phys2@hseo-portal.net',
+    role: 'Contact',
+    avatarColor: 'bg-purple-600 text-white',
+    title: 'Department of Physics — Staff'
+  },
+  {
+    id: 'user_carlos',
+    name: 'Dr. Carlos Reyes',
+    email: 'carlos.reyes@hseo-portal.net',
+    role: 'Contact',
+    avatarColor: 'bg-orange-600 text-white',
+    title: 'Department of Chemical & Biological Engineering — PI'
   }
 ];
 
@@ -145,7 +169,7 @@ export const SIMULATED_PERSONS: Person[] = [
     name: 'Vanessa CHENG',
     role: 'Field Team Member',
     department: 'HSEO',
-    assignedDepartments: ['CHEM'],
+    assignedDepartments: ['CBE'],
     assignedFocalPoints: ['Inspection', 'Hot Work Permits', 'Confined Space Entry'],
     email: 'ftm2@hseo-portal.net',
     phone: '+1 (555) 000-0002',
@@ -240,7 +264,7 @@ export const SIMULATED_PERSONS: Person[] = [
     id: 'pers_sarah',
     name: 'Sarah Jenkins',
     role: 'Principal Investigator (PI)',
-    department: 'CHEM',
+    department: 'CBE',
     email: 'sarah.jenkins@hseo-portal.net',
     phone: '+1 (555) 019-2831',
     title: 'Professor'
@@ -1323,73 +1347,7 @@ export const INITIAL_LASER_DEVICES: LaserDevice[] = [
   }
 ];
 
-export const INITIAL_HOT_WORK_PERMITS: HotWorkPermit[] = [
-  {
-    id: 'HWP-2026-003',
-    location: 'Wing B Cooling Tower Platform',
-    applicantName: 'James Rodriguez',
-    applicantId: 'user_james',
-    date: '2026-07-10',
-    description: 'Grinding and structural pipe repairs on structural water channels.',
-    hazardControls: {
-      gasTestDone: true,
-      fireExtinguisherPresent: true,
-      sprinklerProtected: false,
-      combustiblesRemoved: true,
-      fireWatchAssigned: true
-    },
-    status: 'completed',
-    approvedBy: 'Sarah Jenkins',
-    fireWatchName: 'Marcus Chen',
-    durationHours: 4,
-    createdAt: '2026-07-10T08:00:00Z',
-    locationId: 'loc_cooling_tower',
-    piId: 'pers_sarah'
-  },
-  {
-    id: 'HWP-2026-004',
-    location: 'Wing C Basement Boiler Room',
-    applicantName: 'James Rodriguez',
-    applicantId: 'user_james',
-    date: '2026-07-12',
-    description: 'Arc welding on a fractured steam return bypass valve system.',
-    hazardControls: {
-      gasTestDone: true,
-      fireExtinguisherPresent: true,
-      sprinklerProtected: true,
-      combustiblesRemoved: true,
-      fireWatchAssigned: true
-    },
-    status: 'active',
-    approvedBy: 'Sarah Jenkins',
-    fireWatchName: 'John Davis (Contractor)',
-    durationHours: 8,
-    createdAt: '2026-07-12T05:30:00Z',
-    locationId: 'loc_boiler_room',
-    piId: 'pers_sarah'
-  },
-  {
-    id: 'HWP-2026-005',
-    location: 'Loading Bay Exterior Fence',
-    applicantName: 'James Rodriguez',
-    applicantId: 'user_james',
-    date: '2026-07-13',
-    description: 'Plasma cutting damaged metal gate hinge poles for lock realignment.',
-    hazardControls: {
-      gasTestDone: false,
-      fireExtinguisherPresent: true,
-      sprinklerProtected: false,
-      combustiblesRemoved: true,
-      fireWatchAssigned: false
-    },
-    status: 'draft',
-    fireWatchName: 'Pending',
-    durationHours: 2,
-    createdAt: '2026-07-12T03:15:00Z',
-    locationId: 'loc_boiler_room',
-    piId: 'pers_sarah'
-  }
-];
+export const INITIAL_HOT_WORK_PERMITS: HotWorkPermit[] = [];
 
 export const INITIAL_HAZARDOUS_WASTE: HazardousWasteRequest[] = [
   {

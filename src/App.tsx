@@ -53,7 +53,8 @@ import {
   Equipment,
   ExposureRecord,
   InspectionWindow,
-  OrgUnit 
+  OrgUnit,
+  FiscalYearConfig 
 } from './types';
 
 import { 
@@ -95,6 +96,7 @@ import UserRolePermissionTab, { hasPermission } from './components/UserRolePermi
 import EquipmentTab from './components/EquipmentTab';
 import ExposureTab from './components/ExposureTab';
 import InspectionBookingTab from './components/InspectionBookingTab';
+import SettingsTab, { computeFYLabel } from './components/SettingsTab';
 
 const ROLE_LABELS: Record<string, string> = {
   superadmin: 'Superadmin',
@@ -163,6 +165,19 @@ export default function App() {
   const [exposureRecords, setExposureRecords] = useState<ExposureRecord[]>([]);
   const [inspectionWindows, setInspectionWindows] = useState<InspectionWindow[]>([]);
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
+
+  // Fiscal Year configuration
+  const DEFAULT_FY: FiscalYearConfig = { startMonth: 7, startDay: 1, endMonth: 6, endDay: 30 };
+  const [fiscalYear, setFiscalYear] = useState<FiscalYearConfig>(() => {
+    try {
+      const stored = localStorage.getItem('hseo-fiscal-year');
+      return stored ? JSON.parse(stored) : DEFAULT_FY;
+    } catch { return DEFAULT_FY; }
+  });
+  const handleUpdateFiscalYear = (fy: FiscalYearConfig) => {
+    setFiscalYear(fy);
+    localStorage.setItem('hseo-fiscal-year', JSON.stringify(fy));
+  };
 
   // Local notifications simulated list
   const [notifications, setNotifications] = useState<string[]>([
@@ -462,10 +477,12 @@ export default function App() {
 
   // Program 1: Inspection handlers
   const handleAddInspection = (newInspection: Inspection, logDetails: string) => {
-    const nextInspections = [newInspection, ...inspections];
-    setInspections(nextInspections);
-    const nextLogs = addAuditLog('Created Inspection Checklist', logDetails, 'Inspection');
-    saveState({ inspections: nextInspections, auditLogs: nextLogs });
+    setInspections(prev => {
+      const nextInspections = [newInspection, ...prev];
+      const nextLogs = addAuditLog('Created Inspection Checklist', logDetails, 'Inspection');
+      saveState({ inspections: nextInspections, auditLogs: nextLogs });
+      return nextInspections;
+    });
   };
 
   const handleUpdateInspection = (updated: Inspection) => {
@@ -742,7 +759,8 @@ export default function App() {
       setIeqComplaints(INITIAL_IEQ_COMPLAINTS);
       setPersons(SIMULATED_PERSONS);
       setLocations(SIMULATED_LOCATIONS);
-      setCurrentUser(SIMULATED_USERS[0]);
+      setInspectionWindows([]);
+      setCurrentUser(SIMULATED_USERS.find(u => u.id === 'user_userw') || SIMULATED_USERS[0]);
       
       setNotifications([
         "Cesium-137 calibration source requires a routine leak test.",
@@ -959,6 +977,10 @@ export default function App() {
                 className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'user-role' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                 <UserCog className="h-3.5 w-3.5" />
               </button>
+              <button onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }} title="Settings"
+                className={`w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs transition ${activeTab === 'settings' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <Settings className="h-3.5 w-3.5" />
+              </button>
             </>
           ) : (
             <>
@@ -979,6 +1001,10 @@ export default function App() {
                   <button onClick={() => { setActiveTab('user-role'); setMobileMenuOpen(false); }}
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'user-role' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
                     <UserCog className="h-3.5 w-3.5 shrink-0 text-amber-400" /><span>User Role Permission</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${activeTab === 'settings' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <Settings className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span>Settings</span>
                   </button>
                 </div>
               )}
@@ -1230,7 +1256,7 @@ export default function App() {
             </span>
             <span className="text-slate-700">|</span>
             <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider bg-slate-800/60 px-2 py-0.5 rounded border border-slate-700/50">
-              Regulatory Period: FY2026
+              Regulatory Period: {computeFYLabel(fiscalYear)}
             </span>
           </div>
 
@@ -1305,6 +1331,9 @@ export default function App() {
               waterLogs={waterLogs}
               ieqSamples={ieqSamples}
               exposureRecords={exposureRecords}
+              inspectionWindows={inspectionWindows}
+              locations={locations}
+              persons={persons}
               onQuickNavigate={(tabId) => setActiveTab(tabId)}
             />
           )}
@@ -1321,6 +1350,7 @@ export default function App() {
               onUpdateInspection={handleUpdateInspection}
               onAddWindow={handleAddWindow}
               onUpdateWindow={handleUpdateWindow}
+              fiscalYear={fiscalYear}
             />
           )}
 
@@ -1504,6 +1534,13 @@ export default function App() {
               onAddEquipment={handleAddEquipment}
               onUpdateEquipment={handleUpdateEquipment}
               onDeleteEquipment={handleDeleteEquipment}
+            />
+          )}
+
+          {activeTab === 'settings' && (
+            <SettingsTab
+              fiscalYear={fiscalYear}
+              onUpdateFiscalYear={handleUpdateFiscalYear}
             />
           )}
         </div>

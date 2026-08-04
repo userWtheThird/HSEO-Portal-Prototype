@@ -11,9 +11,11 @@ import {
   TrendingUp,
   Filter,
   Calendar,
-  BarChart3
+  BarChart3,
+  ClipboardList,
+  CalendarClock
 } from 'lucide-react';
-import { User, AuditLog, Inspection, HotWorkPermit, WaterLog, IeqSample, ExposureRecord } from '../types';
+import { User, AuditLog, Inspection, HotWorkPermit, WaterLog, IeqSample, ExposureRecord, InspectionWindow, Location, Person } from '../types';
 
 interface OverviewTabProps {
   currentUser: User;
@@ -23,6 +25,9 @@ interface OverviewTabProps {
   waterLogs: WaterLog[];
   ieqSamples: IeqSample[];
   exposureRecords: ExposureRecord[];
+  inspectionWindows?: InspectionWindow[];
+  locations?: Location[];
+  persons?: Person[];
   onQuickNavigate: (tabId: string) => void;
 }
 
@@ -34,6 +39,9 @@ export default function OverviewTab({
   waterLogs,
   ieqSamples,
   exposureRecords,
+  inspectionWindows = [],
+  locations = [],
+  persons = [],
   onQuickNavigate,
 }: OverviewTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -111,6 +119,67 @@ export default function OverviewTab({
   
   const activityTotal = activityCounts.inspections + activityCounts.permits + activityCounts.water + activityCounts.ieq + activityCounts.exposure;
 
+  // Compute items that need the current user's attention
+  const attentionItems = React.useMemo(() => {
+    const items: { type: string; label: string; count: number; tab: string; urgent: boolean }[] = [];
+    const isFTM = currentUser.role === 'field_team_member';
+    const isAdmin = ['superadmin', 'admin'].includes(currentUser.role);
+
+    // For FTM: Check inspection-related items
+    if (isFTM) {
+      // Get the FTM's assigned departments from their person record
+      const ftmPerson = persons.find(p => p.name === currentUser.name || p.email === currentUser.email);
+      const assignedDepts = ftmPerson?.assignedDepartments || [];
+      
+      // Locations needing inspection (active, not scheduled, not completed) - only for assigned departments
+      const scheduledLocIds = new Set(
+        inspections.filter(i => i.inspectionStatus === 'scheduled' || i.inspectionStatus === 'ready_to_go').map(i => i.locationId)
+      );
+      const needsInspectionCount = locations.filter(l => {
+        if (l.status !== 'Active') return false;
+        // Only count locations in departments the FTM is assigned to
+        if (assignedDepts.length > 0 && !assignedDepts.includes(l.department)) return false;
+        if (scheduledLocIds.has(l.id)) return false;
+        const locInspections = inspections.filter(i => i.locationId === l.id && i.inspectionType !== 'night');
+        const completed = locInspections.filter(i => i.status === 'completed' || i.inspectionStatus === 'closed' || i.inspectionStatus === 'issued').length;
+        // Assume 1 inspection required per year for simplicity
+        if (completed >= 1) return false;
+        return true;
+      }).length;
+      if (needsInspectionCount > 0) {
+        items.push({ type: 'inspection', label: 'Locations Needing Inspection', count: needsInspectionCount, tab: 'inspections', urgent: true });
+      }
+
+      // Open booking windows for assigned departments only
+      const openWindowsCount = inspectionWindows.filter(w => {
+        if (w.status !== 'open') return false;
+        if (assignedDepts.length > 0 && !assignedDepts.includes(w.department)) return false;
+        return true;
+      }).length;
+      if (openWindowsCount > 0) {
+        items.push({ type: 'booking', label: 'Open Booking Windows', count: openWindowsCount, tab: 'inspections', urgent: false });
+      }
+    }
+
+    // For all users: Draft permits needing review
+    const draftPermitsCount = permits.filter(p => p.status === 'draft').length;
+    if (draftPermitsCount > 0) {
+      items.push({ type: 'permit', label: 'Draft Permits Awaiting Review', count: draftPermitsCount, tab: 'hotwork', urgent: isAdmin });
+    }
+
+    // Critical water logs
+    const criticalWaterCount = waterLogs.filter(w => w.status === 'fail' || w.status === 'action_required').length;
+    if (criticalWaterCount > 0) {
+      items.push({ type: 'water', label: 'Critical Water Quality Alerts', count: criticalWaterCount, tab: 'water', urgent: true });
+    }
+
+    // Sort: urgent items first, then by count descending
+    return items.sort((a, b) => {
+      if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
+      return b.count - a.count;
+    });
+  }, [currentUser.role, inspections, locations, inspectionWindows, permits, waterLogs]);
+
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
@@ -153,6 +222,42 @@ export default function OverviewTab({
           </div>
         </div>
       </div>
+
+      {/* Needs Your Attention Section */}
+      {attentionItems.length > 0 && (
+        <div className="bg-slate-900 border border-amber-900/30 rounded-xl p-5">
+          <h2 className="text-sm font-bold text-amber-200 tracking-wider uppercase flex items-center gap-2 mb-4">
+            <AlertTriangle className="text-amber-400 h-4 w-4" />
+            Needs Your Attention
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {attentionItems.map((item, idx) => (
+              <button
+                key={idx}
+                onClick={() => onQuickNavigate(item.tab)}
+                className={`bg-slate-800/50 border rounded-xl p-4 text-left transition hover:border-amber-500/40 ${
+                  item.urgent ? 'border-amber-500/30' : 'border-slate-700'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="text-2xl font-bold text-slate-100">{item.count}</div>
+                  {item.urgent && (
+                    <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                  )}
+                </div>
+                <div className="text-xs font-semibold text-slate-300 mt-2">{item.label}</div>
+                <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+                  {item.type === 'inspection' && <ClipboardList className="h-3 w-3" />}
+                  {item.type === 'booking' && <CalendarClock className="h-3 w-3" />}
+                  {item.type === 'permit' && <ShieldAlert className="h-3 w-3" />}
+                  {item.type === 'water' && <Activity className="h-3 w-3" />}
+                  <span>Click to view</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Program Summary Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

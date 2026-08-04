@@ -39,6 +39,63 @@ export const PERMISSIONS: PermissionSet[] = [
   { label: 'Book Inspection Slot', key: 'canBookInspection', icon: CalendarClock, category: 'booking' },
 ];
 
+/* ─── Grouped permissions for matrix display ─── */
+interface PermissionGroup {
+  category: string;
+  icon: React.ComponentType<{ className?: string }>;
+  permissions: { label: string; key: PermissionKey; icon: React.ComponentType<{ className?: string }> }[];
+}
+
+const PERMISSION_GROUPS: PermissionGroup[] = [
+  {
+    category: 'Departments',
+    icon: Building2,
+    permissions: [
+      { label: 'View', key: 'canViewDepartments', icon: Eye },
+      { label: 'Add', key: 'canAddDepartment', icon: Plus },
+      { label: 'Edit', key: 'canEditDepartment', icon: Pencil },
+      { label: 'Delete', key: 'canDeleteDepartment', icon: Trash2 },
+    ]
+  },
+  {
+    category: 'Locations',
+    icon: MapPin,
+    permissions: [
+      { label: 'View', key: 'canViewLocations', icon: Eye },
+      { label: 'Add', key: 'canAddLocation', icon: Plus },
+      { label: 'Edit', key: 'canEditLocation', icon: Pencil },
+      { label: 'Delete', key: 'canDeleteLocation', icon: Trash2 },
+    ]
+  },
+  {
+    category: 'Field Team',
+    icon: UserCheck,
+    permissions: [
+      { label: 'View', key: 'canViewFtm', icon: Eye },
+      { label: 'Add', key: 'canAddFtm', icon: Plus },
+      { label: 'Edit', key: 'canEditFtm', icon: Pencil },
+      { label: 'Delete', key: 'canDeleteFtm', icon: Trash2 },
+    ]
+  },
+  {
+    category: 'Users & Personnel',
+    icon: Users,
+    permissions: [
+      { label: 'View', key: 'canViewUsers', icon: Eye },
+      { label: 'Add', key: 'canAddUser', icon: Plus },
+      { label: 'Edit', key: 'canEditPerson', icon: Pencil },
+      { label: 'Delete', key: 'canDeletePerson', icon: Trash2 },
+    ]
+  },
+  {
+    category: 'Booking',
+    icon: CalendarClock,
+    permissions: [
+      { label: 'Book Inspection', key: 'canBookInspection', icon: CalendarClock },
+    ]
+  },
+];
+
 /* ─── Role → Permission map ─── */
 export type PermissionKey = typeof PERMISSIONS[number]['key'];
 
@@ -286,28 +343,42 @@ export default function UserRolePermissionTab({ currentUser, allUsers }: UserRol
               </tr>
             </thead>
             <tbody>
-              {PERMISSIONS.map((perm, idx) => (
-                <tr key={perm.key} className={`border-b border-slate-800/30 ${idx % 2 === 0 ? '' : 'bg-slate-800/10'}`}>
-                  <td className="px-4 py-2.5 text-slate-300 font-medium">
-                    <div className="flex items-center gap-2">
-                      <perm.icon className="h-3 w-3 text-slate-500" />
-                      {perm.label}
-                    </div>
-                  </td>
-                  {roles.map(role => {
-                    const enabled = permissions[role]?.[perm.key as PermissionKey] ?? false;
-                    const isSelf = role === 'superadmin';
-                    return (
-                      <td key={role} className="px-2 py-2.5 text-center">
-                        <Toggle
-                          enabled={enabled}
-                          onChange={() => handleToggle(role, perm.key as PermissionKey)}
-                          disabled={!isSuperuser || isSelf}
-                        />
+              {PERMISSION_GROUPS.map((group, gIdx) => (
+                <React.Fragment key={group.category}>
+                  {/* Category header row */}
+                  <tr className={`bg-slate-800/40 border-b border-slate-700/40 ${gIdx > 0 ? 'border-t-2 border-t-slate-700/50' : ''}`}>
+                    <td className="px-4 py-2.5 text-slate-200 font-semibold" colSpan={roles.length + 1}>
+                      <div className="flex items-center gap-2">
+                        <group.icon className="h-3.5 w-3.5 text-slate-400" />
+                        {group.category}
+                      </div>
+                    </td>
+                  </tr>
+                  {/* Permission sub-rows */}
+                  {group.permissions.map((perm, pIdx) => (
+                    <tr key={perm.key} className={`border-b border-slate-800/30 ${pIdx % 2 === 0 ? '' : 'bg-slate-800/10'}`}>
+                      <td className="px-4 py-2 pl-10 text-slate-300 font-medium">
+                        <div className="flex items-center gap-2">
+                          <perm.icon className="h-3 w-3 text-slate-500" />
+                          {perm.label}
+                        </div>
                       </td>
-                    );
-                  })}
-                </tr>
+                      {roles.map(role => {
+                        const enabled = permissions[role]?.[perm.key] ?? false;
+                        const isSelf = role === 'superadmin';
+                        return (
+                          <td key={role} className="px-2 py-2 text-center">
+                            <Toggle
+                              enabled={enabled}
+                              onChange={() => handleToggle(role, perm.key)}
+                              disabled={!isSuperuser || isSelf}
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
@@ -335,21 +406,31 @@ export default function UserRolePermissionTab({ currentUser, allUsers }: UserRol
                   }
                 </button>
                 {expandedRole === role && (
-                  <div className="px-4 pb-3 space-y-2">
-                    {PERMISSIONS.map(perm => {
-                      const enabled = permissions[role]?.[perm.key as PermissionKey] ?? false;
-                      const isSelf = role === 'superadmin';
-                      return (
-                        <div key={perm.key} className="flex items-center justify-between">
-                          <span className="text-xs text-slate-400">{perm.label}</span>
-                          <Toggle
-                            enabled={enabled}
-                            onChange={() => handleToggle(role, perm.key as PermissionKey)}
-                            disabled={!isSuperuser || isSelf}
-                          />
+                  <div className="px-4 pb-3 space-y-3">
+                    {PERMISSION_GROUPS.map(group => (
+                      <div key={group.category}>
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1.5 pt-2 border-t border-slate-800/50">
+                          <group.icon className="h-3 w-3 text-slate-500" />
+                          {group.category}
                         </div>
-                      );
-                    })}
+                        <div className="space-y-1.5">
+                          {group.permissions.map(perm => {
+                            const enabled = permissions[role]?.[perm.key] ?? false;
+                            const isSelf = role === 'superadmin';
+                            return (
+                              <div key={perm.key} className="flex items-center justify-between pl-4">
+                                <span className="text-xs text-slate-400">{perm.label}</span>
+                                <Toggle
+                                  enabled={enabled}
+                                  onChange={() => handleToggle(role, perm.key)}
+                                  disabled={!isSuperuser || isSelf}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

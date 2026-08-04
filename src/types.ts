@@ -365,3 +365,10 @@ export interface ExposureRecord {
   followUp: string;
   notes: string;
 }
+
+export interface FiscalYearConfig {
+  startMonth: number; // 1-12
+  startDay: number;
+  endMonth: number; // 1-12
+  endDay: number;
+}
