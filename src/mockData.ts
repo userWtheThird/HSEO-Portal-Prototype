@@ -1260,6 +1260,23 @@ export const INITIAL_RADIATION_SOURCES: RadiationSource[] = [
     status: 'safe',
     locationId: 'loc_phys_lab',
     piId: 'pers_elena'
+  },
+  {
+    id: 'rad_apparatus_2',
+    category: 'apparatus',
+    sourceName: 'CBE Fluoroscopy System',
+    equipmentDescription: 'C-arm fluoroscopy unit for research imaging',
+    licenceNumber: 'RAD-LIC-2025-6621',
+    department: 'CBE',
+    location: 'CYT Rm 4101',
+    spaceID: 'CYT4101',
+    xrayTubeSerialNumbers: 'XRAY-CBE-001',
+    custodian: 'Sarah Jenkins',
+    licenceExpiryDate: '2026-09-15',
+    notificationDate: '2026-05-15', // 4 months prior
+    status: 'alert',
+    locationId: 'loc_cyt_4101',
+    piId: 'pers_sarah'
   }
 ];
 

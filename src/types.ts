@@ -121,6 +121,15 @@ export interface InspectionWindow {
   bookings: InspectionBooking[];
 }
 
+export interface LicenceRecord {
+  id: string;
+  licenceNumber: string;
+  changedDate: string; // When the licence number was changed
+  changedBy: string; // User who made the change
+  fileName?: string; // Uploaded PDF filename
+  notes?: string;
+}
+
 export interface RadiationSource {
   id: string;
   category?: 'sealed' | 'unsealed' | 'apparatus'; // separates the inventory further
@@ -142,6 +151,8 @@ export interface RadiationSource {
 
   // New Irradiating Apparatus fields
   licenceNumber?: string;
+  licenceFile?: string; // Current licence PDF filename
+  licenceHistory?: LicenceRecord[]; // History of licence number changes
   department?: string;
   equipmentDescription?: string;
   xrayTubeSerialNumbers?: string;

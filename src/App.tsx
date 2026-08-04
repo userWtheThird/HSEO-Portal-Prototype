@@ -1334,6 +1334,7 @@ export default function App() {
               inspectionWindows={inspectionWindows}
               locations={locations}
               persons={persons}
+              radiationSources={radiationSources}
               onQuickNavigate={(tabId) => setActiveTab(tabId)}
             />
           )}

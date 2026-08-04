@@ -22,7 +22,11 @@ import {
   Trash2,
   Shield,
   Layers,
-  Network
+  Network,
+  Upload,
+  FileText,
+  History,
+  File
 } from 'lucide-react';
 import { 
   User, 
@@ -30,6 +34,7 @@ import {
   DosimeterLog, 
   Location, 
   Person,
+  LicenceRecord,
   Rua,
   RuaGroup
 } from '../types';
@@ -164,6 +169,13 @@ export default function RadiationTab({
   const [equipmentDescription, setEquipmentDescription] = useState('');
   const [xrayTubeSerialNumbers, setXrayTubeSerialNumbers] = useState('');
   const [licenceExpiryDate, setLicenceExpiryDate] = useState('');
+  const [licenceFile, setLicenceFile] = useState<File | null>(null);
+
+  // Licence change modal state
+  const [showLicenceChangeModal, setShowLicenceChangeModal] = useState(false);
+  const [newLicenceNumber, setNewLicenceNumber] = useState('');
+  const [newLicenceFile, setNewLicenceFile] = useState<File | null>(null);
+  const [newLicenceNotes, setNewLicenceNotes] = useState('');
 
   // States for adding dosimeter log
   const [isAddingDose, setIsAddingDose] = useState(false);
@@ -240,6 +252,14 @@ export default function RadiationTab({
         alert("Please complete all required fields (Equipment Description, Licence Number, and SpaceID).");
         return;
       }
+      if (!licenceFile) {
+        alert("Please upload the licence PDF file.");
+        return;
+      }
+      if (licenceFile.type !== 'application/pdf') {
+        alert("Licence file must be in PDF format.");
+        return;
+      }
     }
 
     const matchedLoc = locations.find(l => l.spaceID === spaceID);
@@ -275,6 +295,15 @@ export default function RadiationTab({
 
       // Apparatus specific
       licenceNumber: inventoryCategory === 'apparatus' ? licenceNumber : undefined,
+      licenceFile: inventoryCategory === 'apparatus' && licenceFile ? licenceFile.name : undefined,
+      licenceHistory: inventoryCategory === 'apparatus' && licenceFile ? [{
+        id: `lic_rec_${Date.now()}`,
+        licenceNumber: licenceNumber,
+        changedDate: new Date().toISOString().split('T')[0],
+        changedBy: currentUser.name,
+        fileName: licenceFile.name,
+        notes: 'Initial licence registration'
+      }] : undefined,
       department: inventoryCategory === 'apparatus' ? apparatusDept || (matchedLoc ? matchedLoc.department : 'PHYS') : undefined,
       equipmentDescription: inventoryCategory === 'apparatus' ? equipmentDescription : undefined,
       xrayTubeSerialNumbers: inventoryCategory === 'apparatus' ? xrayTubeSerialNumbers : undefined,
@@ -300,6 +329,7 @@ export default function RadiationTab({
     setEquipmentDescription('');
     setXrayTubeSerialNumbers('');
     setLicenceExpiryDate('');
+    setLicenceFile(null);
     setIsAddingSource(false);
   };
 
@@ -371,7 +401,51 @@ export default function RadiationTab({
       lastInventoryCheckDate: todayStr,
       checkHistory: updatedHistory
     };
-    onUpdateRadiationSource(updated, `Conducted inventory check for source "${source.sourceName}". Last check updated to ${todayStr}.`);
+    const isApparatus = source.category === 'apparatus';
+    const actionText = isApparatus
+      ? `Completed annual IA check for apparatus "${source.sourceName || source.equipmentDescription}". Last check updated to ${todayStr}.`
+      : `Conducted inventory check for source "${source.sourceName}". Last check updated to ${todayStr}.`;
+    onUpdateRadiationSource(updated, actionText);
+  };
+
+  // Handle licence number change for apparatus
+  const handleLicenceChange = () => {
+    if (!selectedSource || !onUpdateRadiationSource) return;
+    if (!newLicenceNumber.trim()) {
+      alert('Please enter a new licence number.');
+      return;
+    }
+    if (!newLicenceFile) {
+      alert('Please upload the new licence PDF.');
+      return;
+    }
+    if (newLicenceFile.type !== 'application/pdf') {
+      alert('Licence file must be in PDF format.');
+      return;
+    }
+
+    const newRecord: LicenceRecord = {
+      id: `lic_rec_${Date.now()}`,
+      licenceNumber: newLicenceNumber,
+      changedDate: new Date().toISOString().split('T')[0],
+      changedBy: currentUser.name,
+      fileName: newLicenceFile.name,
+      notes: newLicenceNotes || undefined
+    };
+
+    const updatedHistory = [...(selectedSource.licenceHistory || []), newRecord];
+    const updated: RadiationSource = {
+      ...selectedSource,
+      licenceNumber: newLicenceNumber,
+      licenceFile: newLicenceFile.name,
+      licenceHistory: updatedHistory
+    };
+
+    onUpdateRadiationSource(updated, `Licence number changed for "${selectedSource.sourceName}" from "${selectedSource.licenceNumber}" to "${newLicenceNumber}".`);
+    setShowLicenceChangeModal(false);
+    setNewLicenceNumber('');
+    setNewLicenceFile(null);
+    setNewLicenceNotes('');
   };
 
   // Batch Check-Date Update for Sealed Sources
@@ -930,6 +1004,7 @@ export default function RadiationTab({
                             onChange={(e) => {
                               const dept = e.target.value;
                               setApparatusDept(dept);
+                              setSpaceID(''); // Reset SpaceID when department changes
                               const deptPers = persons.filter(p => p.department.toLowerCase().trim() === dept.toLowerCase().trim());
                               if (deptPers.length > 0) {
                                 setCustodian(deptPers[0].name);
@@ -955,12 +1030,15 @@ export default function RadiationTab({
                             required
                           >
                             <option value="">-- Choose SpaceID --</option>
-                            {locations.map(loc => (
+                            {locations.filter(loc => !apparatusDept || loc.department === apparatusDept).map(loc => (
                               <option key={loc.id} value={loc.spaceID}>
                                 {loc.spaceID} (Rm {loc.roomNumber}, {loc.building})
                               </option>
                             ))}
                           </select>
+                          {apparatusDept && (
+                            <p className="text-[9px] text-slate-600 mt-1">Showing rooms in {apparatusDept} department only.</p>
+                          )}
                         </div>
 
                         <div>
@@ -997,6 +1075,25 @@ export default function RadiationTab({
                             onChange={(e) => setLicenceExpiryDate(e.target.value)}
                             className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none"
                           />
+                        </div>
+
+                        <div className="col-span-2">
+                          <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Licence PDF Upload *</label>
+                          <div className="flex items-center gap-2">
+                            <label className="flex-1 flex items-center gap-2 px-3 py-2 bg-slate-950 border border-slate-800 rounded cursor-pointer hover:border-amber-500/50 transition">
+                              <Upload className="h-3.5 w-3.5 text-slate-500" />
+                              <span className="text-xs text-slate-400 truncate">
+                                {licenceFile ? licenceFile.name : 'Choose PDF file...'}
+                              </span>
+                              <input 
+                                type="file" 
+                                accept=".pdf"
+                                onChange={(e) => setLicenceFile(e.target.files?.[0] || null)}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                          <p className="text-[9px] text-slate-600 mt-1">PDF format only. This will be stored as the initial licence record.</p>
                         </div>
                       </>
                     )}
@@ -1345,7 +1442,7 @@ export default function RadiationTab({
                               <th className="px-4 py-3">Radioactivity (Current)</th>
                               <th className="px-4 py-3">Department</th>
                               <th className="px-4 py-3">SpaceID</th>
-                              <th className="px-4 py-3">Inv. Check Status (Annual)</th>
+                              <th className="px-4 py-3">Checked</th>
                               <th className="px-4 py-3 text-center">Actions</th>
                             </>
                           ) : inventoryCategory === 'unsealed' ? (
@@ -1364,6 +1461,7 @@ export default function RadiationTab({
                               <th className="px-4 py-3">Department</th>
                               <th className="px-4 py-3">SpaceID</th>
                               <th className="px-4 py-3">Licence Expiry</th>
+                              <th className="px-4 py-3">Checked</th>
                               <th className="px-4 py-3 text-right">Status</th>
                             </>
                           )}
@@ -1508,14 +1606,46 @@ export default function RadiationTab({
                                         <span className="block text-[9px] text-rose-500 font-bold uppercase mt-0.5">Expired</span>
                                       )}
                                     </td>
+                                    <td className="px-4 py-3">
+                                      {source.lastInventoryCheckDate ? (
+                                        <div className="space-y-0.5">
+                                          <span className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold uppercase border bg-emerald-950/40 text-emerald-400 border-emerald-900/30">
+                                            Checked
+                                          </span>
+                                          <span className="block text-[8px] text-slate-600 font-mono">
+                                            {source.lastInventoryCheckDate}
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-[9px] text-slate-600 italic">Not checked</span>
+                                      )}
+                                    </td>
                                     <td className="px-4 py-3 text-right">
-                                      <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase ${
-                                        source.status === 'safe' 
-                                          ? 'bg-slate-900/80 text-emerald-300 border-emerald-500/30' 
-                                          : 'bg-slate-900/80 text-rose-300 border-rose-500/30 animate-pulse'
-                                      }`}>
-                                        {source.status}
-                                      </span>
+                                      {(() => {
+                                        const expiryDate = source.licenceExpiryDate ? new Date(source.licenceExpiryDate) : null;
+                                        const today = new Date();
+                                        const fourMonthsFromNow = new Date();
+                                        fourMonthsFromNow.setMonth(fourMonthsFromNow.getMonth() + 4);
+                                        
+                                        let statusText = 'Licence OK';
+                                        let statusClass = 'bg-emerald-950/40 text-emerald-400 border-emerald-900/30';
+                                        
+                                        if (expiryDate) {
+                                          if (expiryDate < today) {
+                                            statusText = 'Licence Expired';
+                                            statusClass = 'bg-rose-950/40 text-rose-400 border-rose-900/30 animate-pulse font-black';
+                                          } else if (expiryDate <= fourMonthsFromNow) {
+                                            statusText = 'Renewal In Progress';
+                                            statusClass = 'bg-amber-950/40 text-amber-400 border-amber-900/30';
+                                          }
+                                        }
+                                        
+                                        return (
+                                          <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase ${statusClass}`}>
+                                            {statusText}
+                                          </span>
+                                        );
+                                      })()}
                                     </td>
                                   </>
                                 )}
@@ -1524,7 +1654,7 @@ export default function RadiationTab({
                           })
                         ) : (
                           <tr>
-                            <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                            <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
                               <Biohazard className="h-8 w-8 mx-auto text-slate-700 mb-2 animate-pulse" />
                               <p className="text-xs">No assets matching your search/filters are currently listed.</p>
                             </td>
@@ -1561,6 +1691,25 @@ export default function RadiationTab({
                         <X className="h-4 w-4" />
                       </button>
                     </div>
+
+                    {/* Annual IA Check Button for Apparatus */}
+                    {inventoryCategory === 'apparatus' && (
+                      <div className="space-y-2">
+                        <button
+                          onClick={() => handleMarkVerifiedSingle(selectedSource)}
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-3 rounded transition flex items-center justify-center gap-1 shadow"
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          Annual IA Check Completed
+                        </button>
+                        {selectedSource.lastInventoryCheckDate && (
+                          <div className="text-center">
+                            <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider block">Last Checked:</span>
+                            <span className="text-[10px] font-mono text-emerald-400 font-semibold">{selectedSource.lastInventoryCheckDate}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="space-y-2.5 bg-slate-950/50 border border-slate-800/85 rounded-lg p-3 text-xs leading-normal font-sans">
                       <div className="flex justify-between">
@@ -1622,6 +1771,60 @@ export default function RadiationTab({
                               {selectedSource.xrayTubeSerialNumbers || 'N/A'}
                             </span>
                           </div>
+
+                          {/* Current Licence File */}
+                          {selectedSource.licenceFile && (
+                            <div className="flex justify-between items-center border-t border-slate-800/60 pt-2">
+                              <span className="text-slate-500">Current Licence:</span>
+                              <span className="flex items-center gap-1 text-amber-400 text-[10px]">
+                                <FileText className="h-3 w-3" />
+                                {selectedSource.licenceFile}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Licence History */}
+                          {selectedSource.licenceHistory && selectedSource.licenceHistory.length > 0 && (
+                            <div className="flex flex-col gap-1 border-t border-slate-800/60 pt-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
+                                  <History className="h-3 w-3" /> Licence History
+                                </span>
+                                <span className="text-[9px] text-slate-600 font-mono">{selectedSource.licenceHistory.length} record(s)</span>
+                              </div>
+                              <div className="max-h-32 overflow-y-auto border border-slate-800/60 rounded p-2 bg-slate-950/40 space-y-2 custom-scrollbar">
+                                {[...selectedSource.licenceHistory].reverse().map((rec) => (
+                                  <div key={rec.id} className="text-[10px] border-b border-slate-800/40 pb-1.5 last:border-0 last:pb-0">
+                                    <div className="flex justify-between items-center">
+                                      <span className="font-mono font-bold text-amber-400">{rec.licenceNumber}</span>
+                                      <span className="text-slate-600">{rec.changedDate}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center mt-0.5">
+                                      <span className="text-slate-500">by {rec.changedBy}</span>
+                                      {rec.fileName && (
+                                        <span className="flex items-center gap-0.5 text-slate-500">
+                                          <File className="h-2.5 w-2.5" /> {rec.fileName}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {rec.notes && <div className="text-slate-600 italic mt-0.5">{rec.notes}</div>}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Change Licence Button */}
+                          <button
+                            onClick={() => {
+                              setNewLicenceNumber(selectedSource.licenceNumber || '');
+                              setShowLicenceChangeModal(true);
+                            }}
+                            className="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2 px-3 rounded transition flex items-center justify-center gap-1 shadow mt-2"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                            Change Licence Number
+                          </button>
                         </>
                       )}
                     </div>
@@ -2035,6 +2238,81 @@ export default function RadiationTab({
               <button onClick={handleSaveEditSealedSource}
                 className="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold py-2 rounded-lg transition shadow">
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Change Licence Modal ── */}
+      {showLicenceChangeModal && selectedSource && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowLicenceChangeModal(false)}>
+          <div className="bg-slate-900 border border-amber-600/30 rounded-xl p-5 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+              <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                <Edit className="h-4 w-4 text-amber-400" />
+                Change Licence Number
+              </h3>
+              <button onClick={() => setShowLicenceChangeModal(false)} className="text-slate-500 hover:text-slate-300"><X className="h-4 w-4" /></button>
+            </div>
+
+            <div className="mb-3 p-2 bg-slate-800/50 rounded text-[10px] text-slate-400">
+              <span className="text-slate-500">Current licence:</span>{' '}
+              <span className="font-mono font-bold text-amber-400">{selectedSource.licenceNumber}</span>
+              {selectedSource.licenceFile && (
+                <span className="ml-2 text-slate-500">({selectedSource.licenceFile})</span>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">New Licence Number *</label>
+                <input
+                  type="text"
+                  value={newLicenceNumber}
+                  onChange={(e) => setNewLicenceNumber(e.target.value)}
+                  placeholder="e.g. RAD-LIC-2026-X99"
+                  className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">New Licence PDF *</label>
+                <label className="flex items-center gap-2 px-3 py-2 bg-slate-950 border border-slate-800 rounded cursor-pointer hover:border-amber-500/50 transition">
+                  <Upload className="h-3.5 w-3.5 text-slate-500" />
+                  <span className="text-xs text-slate-400 truncate">
+                    {newLicenceFile ? newLicenceFile.name : 'Choose PDF file...'}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => setNewLicenceFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                  />
+                </label>
+                <p className="text-[9px] text-slate-600 mt-1">PDF format only.</p>
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Notes (optional)</label>
+                <input
+                  type="text"
+                  value={newLicenceNotes}
+                  onChange={(e) => setNewLicenceNotes(e.target.value)}
+                  placeholder="e.g. Renewal after expiry"
+                  className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-5">
+              <button onClick={() => setShowLicenceChangeModal(false)}
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 rounded-lg transition">
+                Cancel
+              </button>
+              <button onClick={handleLicenceChange}
+                className="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold py-2 rounded-lg transition shadow">
+                Update Licence
               </button>
             </div>
           </div>

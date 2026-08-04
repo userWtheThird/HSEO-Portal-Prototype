@@ -13,9 +13,10 @@ import {
   Calendar,
   BarChart3,
   ClipboardList,
-  CalendarClock
+  CalendarClock,
+  Radio
 } from 'lucide-react';
-import { User, AuditLog, Inspection, HotWorkPermit, WaterLog, IeqSample, ExposureRecord, InspectionWindow, Location, Person } from '../types';
+import { User, AuditLog, Inspection, HotWorkPermit, WaterLog, IeqSample, ExposureRecord, InspectionWindow, Location, Person, RadiationSource } from '../types';
 
 interface OverviewTabProps {
   currentUser: User;
@@ -28,6 +29,7 @@ interface OverviewTabProps {
   inspectionWindows?: InspectionWindow[];
   locations?: Location[];
   persons?: Person[];
+  radiationSources?: RadiationSource[];
   onQuickNavigate: (tabId: string) => void;
 }
 
@@ -42,6 +44,7 @@ export default function OverviewTab({
   inspectionWindows = [],
   locations = [],
   persons = [],
+  radiationSources = [],
   onQuickNavigate,
 }: OverviewTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -159,6 +162,22 @@ export default function OverviewTab({
       if (openWindowsCount > 0) {
         items.push({ type: 'booking', label: 'Open Booking Windows', count: openWindowsCount, tab: 'inspections', urgent: false });
       }
+
+      // Irradiating apparatus with expiring/expired licences in assigned departments
+      const today = new Date();
+      const apparatusNeedingRenewal = radiationSources.filter(s => {
+        if (s.category !== 'apparatus' || !s.licenceExpiryDate) return false;
+        // Check if apparatus is in an assigned department
+        if (assignedDepts.length > 0 && s.department && !assignedDepts.includes(s.department)) return false;
+        const expiryDate = new Date(s.licenceExpiryDate);
+        // Check if expired or expiring within 4 months (notification period)
+        const fourMonthsFromNow = new Date();
+        fourMonthsFromNow.setMonth(fourMonthsFromNow.getMonth() + 4);
+        return expiryDate <= fourMonthsFromNow;
+      });
+      if (apparatusNeedingRenewal.length > 0) {
+        items.push({ type: 'radiation', label: 'Apparatus Licence Renewal Due', count: apparatusNeedingRenewal.length, tab: 'radiation', urgent: true });
+      }
     }
 
     // For all users: Draft permits needing review
@@ -178,7 +197,7 @@ export default function OverviewTab({
       if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
       return b.count - a.count;
     });
-  }, [currentUser.role, inspections, locations, inspectionWindows, permits, waterLogs]);
+  }, [currentUser.role, inspections, locations, inspectionWindows, permits, waterLogs, radiationSources]);
 
   return (
     <div className="space-y-6">
@@ -251,6 +270,7 @@ export default function OverviewTab({
                   {item.type === 'booking' && <CalendarClock className="h-3 w-3" />}
                   {item.type === 'permit' && <ShieldAlert className="h-3 w-3" />}
                   {item.type === 'water' && <Activity className="h-3 w-3" />}
+                  {item.type === 'radiation' && <Radio className="h-3 w-3" />}
                   <span>Click to view</span>
                 </div>
               </button>
