@@ -7,7 +7,6 @@ import {
   Activity, 
   Search, 
   FileText, 
-  UserPlus, 
   TrendingUp,
   Filter,
   Calendar,

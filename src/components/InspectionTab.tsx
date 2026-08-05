@@ -287,7 +287,7 @@ export default function InspectionTab({
     };
     onAddWindow(newWindow);
     setShowBookingModal(false);
-    setBwStart(''); setBwEnd(''); setSelectedLocIds([]); setBwConflicts([]); setBwInfo([]);
+    setBwStart(''); setBwEnd(''); setSelectedLocIds([]);
   };
 
   // Finding draft
@@ -296,7 +296,6 @@ export default function InspectionTab({
   const [newFindingCode, setNewFindingCode] = useState('');
   const [newFindingDesc, setNewFindingDesc] = useState('');
   const [newFindingLevel, setNewFindingLevel] = useState<1|2|3>(1);
-  const [newFindingContactId, setNewFindingContactId] = useState('');
   const [newFindingFollowUp, setNewFindingFollowUp] = useState('');
   const [newFindingPhoto, setNewFindingPhoto] = useState<string | null>(null);
   const [selectedStdFindingId, setSelectedStdFindingId] = useState<string | null>(null);
@@ -351,7 +350,7 @@ export default function InspectionTab({
       };
       const prefix = codeMap[cat] || cat.substring(0, 2).toUpperCase();
       // Count existing findings in this category in the current report
-      const countInCategory = newFindings.filter(f => f.category === cat).length;
+      const countInCategory = (selectedInspection?.findings || []).filter(f => f.category === cat).length;
       setNewFindingCode(`${prefix}-${String(countInCategory + 1).padStart(3, '0')}`);
     } else {
       setNewFindingCode('');
@@ -501,7 +500,6 @@ export default function InspectionTab({
       status: 'open',
       severity: newFindingLevel === 3 ? 'high' : newFindingLevel === 2 ? 'medium' : 'low',
       actionLevel: newFindingLevel,
-      referredContactId: newFindingContactId || undefined,
       followUpActions: newFindingFollowUp,
       photoUrl: newFindingPhoto || undefined
     };

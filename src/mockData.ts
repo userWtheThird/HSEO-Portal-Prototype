@@ -1029,7 +1029,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     timestamp: '2026-07-12T02:15:00Z',
     userId: 'user_sarah',
     userName: 'Sarah Jenkins',
-    userRole: 'admin',
+    userRole: 'PI',
     action: 'Approved Hot Work Permit',
     details: 'Permit #HWP-2026-004 approved for welding in Wing C Mechanical Room.',
     program: 'Hot Work'

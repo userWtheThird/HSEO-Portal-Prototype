@@ -500,7 +500,7 @@ export default function App() {
   const handleUpdateInspection = (updated: Inspection) => {
     const nextInsps = inspections.map(i => i.id === updated.id ? updated : i);
     setInspections(nextInsps);
-    const nextLogs = addAuditLog("Updated Inspection", `Updated inspection status/findings for ${updated.title}`, currentUser.name);
+    const nextLogs = addAuditLog("Updated Inspection", `Updated inspection status/findings for ${updated.title}`, 'Inspection');
     saveState({ inspections: nextInsps, auditLogs: nextLogs });
   };
 
@@ -742,17 +742,6 @@ export default function App() {
     saveState({ ieqParameters: nextParams, auditLogs: nextLogs });
   };
 
-  const handleUpdateSensorLog = (updatedLog: IeqLog) => {
-    const nextLogs = ieqLogs.map(l => {
-      if (l.id === updatedLog.id) {
-        return updatedLog;
-      }
-      return l;
-    });
-    setIeqLogs(nextLogs);
-    saveState({ ieqLogs: nextLogs });
-  };
-
   // Reset local state back to initial mock factory settings
   const handleFactoryReset = () => {
     if (window.confirm("Restore HSEO Portal back to clean initial factory compliance simulation states?")) {
@@ -769,6 +758,12 @@ export default function App() {
       setWaterLogs(INITIAL_WATER_LOGS);
       setIeqLogs(INITIAL_IEQ_LOGS);
       setIeqComplaints(INITIAL_IEQ_COMPLAINTS);
+      setIeqParameters(INITIAL_IEQ_PARAMETERS);
+      setIeqSamples(INITIAL_IEQ_SAMPLES);
+      setEquipmentList(INITIAL_EQUIPMENT);
+      setExposureRecords(INITIAL_EXPOSURE_RECORDS);
+      setOrgUnits(INITIAL_ORG_UNITS);
+      setInspectionFindings([]);
       setPersons(SIMULATED_PERSONS);
       setLocations(SIMULATED_LOCATIONS);
       setInspectionWindows([]);

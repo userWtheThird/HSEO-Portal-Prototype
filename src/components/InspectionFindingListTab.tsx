@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Search, 
   Plus, 
@@ -6,8 +6,6 @@ import {
   Trash2, 
   X, 
   Filter,
-  AlertTriangle,
-  Shield,
   FileText,
   Save,
   Download,
