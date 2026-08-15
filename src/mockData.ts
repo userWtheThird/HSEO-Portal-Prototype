@@ -19,6 +19,7 @@ import {
   ExposureRecord,
   OrgUnit 
 } from './types';
+import { SEED_SOURCES } from './components/radiation/seeds';
 
 export const SIMULATED_USERS: User[] = [
   {
@@ -1173,112 +1174,9 @@ export const INITIAL_INSPECTIONS: Inspection[] = [
   }
 ];
 
-export const INITIAL_RADIATION_SOURCES: RadiationSource[] = [
-  {
-    id: 'rad_1',
-    category: 'sealed',
-    sourceName: 'Calibration Source Alpha',
-    isotope: 'Americium-241',
-    activity: '37 kBq',
-    location: 'Physics Lab Vault Cabinet A',
-    spaceID: 'LSK105',
-    lastLeakTest: '2026-05-10',
-    nextLeakTest: '2026-11-10',
-    status: 'safe',
-    custodian: 'Dr. Elena Rostova',
-    locationId: 'loc_phys_lab',
-    piId: 'pers_elena',
-    lastInventoryCheckDate: '2026-07-01',
-    activityReference: '37 kBq',
-    referenceDate: '2026-01-01',
-    checkHistory: ['2026-01-01', '2026-07-01']
-  },
-  {
-    id: 'rad_2',
-    category: 'sealed',
-    sourceName: 'Industrial Gauge Head Gamma',
-    isotope: 'Cesium-137',
-    activity: '185 MBq',
-    location: 'Material Testing Wing D',
-    spaceID: 'UST302',
-    lastLeakTest: '2026-01-15',
-    nextLeakTest: '2026-07-15',
-    status: 'due_test',
-    custodian: 'James Rodriguez',
-    locationId: 'loc_chem_prep',
-    piId: 'pers_sarah',
-    lastInventoryCheckDate: '2026-06-15',
-    activityReference: '185 MBq',
-    referenceDate: '2025-12-15',
-    checkHistory: ['2025-12-15', '2026-06-15']
-  },
-  {
-    id: 'rad_3',
-    category: 'sealed',
-    sourceName: 'Neutron Moderator Rod',
-    isotope: 'Californium-252',
-    activity: '5.2 MBq',
-    location: 'Nuclear Physics Lab Storage B',
-    spaceID: 'LSK105',
-    lastLeakTest: '2025-12-01',
-    nextLeakTest: '2026-06-01',
-    status: 'alert',
-    custodian: 'Dr. Elena Rostova',
-    locationId: 'loc_phys_lab',
-    piId: 'pers_elena',
-    lastInventoryCheckDate: '2026-05-20',
-    activityReference: '5.5 MBq',
-    referenceDate: '2025-11-20',
-    checkHistory: ['2025-11-20', '2026-05-20']
-  },
-  {
-    id: 'rad_unsealed_1',
-    category: 'unsealed',
-    sourceName: 'Tritium Aqueous Tracer',
-    isotope: 'Tritium (H-3)',
-    activity: '250 MBq',
-    location: 'Nuclear Medicine Suite',
-    spaceID: 'CYT114',
-    status: 'safe',
-    custodian: 'Dr. Elena Rostova',
-    locationId: 'loc_quantum_optics',
-    piId: 'pers_elena'
-  },
-  {
-    id: 'rad_apparatus_1',
-    category: 'apparatus',
-    sourceName: 'Diagnostic X-Ray Unit-A',
-    equipmentDescription: 'High-frequency digital diagnostic radiography system',
-    licenceNumber: 'RAD-LIC-2026-8842',
-    department: 'PHYS',
-    location: 'LSK Rm 105',
-    spaceID: 'LSK105',
-    xrayTubeSerialNumbers: 'XRAY-TUBE-9921-A, XRAY-TUBE-9921-B',
-    custodian: 'Dr. Elena Rostova',
-    licenceExpiryDate: '2026-11-30',
-    notificationDate: '2026-07-30', // 4 months prior
-    status: 'safe',
-    locationId: 'loc_phys_lab',
-    piId: 'pers_elena'
-  },
-  {
-    id: 'rad_apparatus_2',
-    category: 'apparatus',
-    sourceName: 'CBE Fluoroscopy System',
-    equipmentDescription: 'C-arm fluoroscopy unit for research imaging',
-    licenceNumber: 'RAD-LIC-2025-6621',
-    department: 'CBE',
-    location: 'CYT Rm 4101',
-    spaceID: 'CYT4101',
-    xrayTubeSerialNumbers: 'XRAY-CBE-001',
-    custodian: 'Sarah Jenkins',
-    licenceExpiryDate: '2026-09-15',
-    notificationDate: '2026-05-15', // 4 months prior
-    status: 'alert',
-    locationId: 'loc_cyt_4101',
-    piId: 'pers_sarah'
-  }
-];
+// IRP workflow seed inventory — sealed / unsealed sources and irradiating apparatus
+// (lifecycle, leak-test history, licence history etc. live in the radiation module seeds)
+export const INITIAL_RADIATION_SOURCES: RadiationSource[] = SEED_SOURCES;
 
 export const INITIAL_DOSIMETER_LOGS: DosimeterLog[] = [
   {

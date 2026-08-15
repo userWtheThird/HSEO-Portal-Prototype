@@ -160,6 +160,29 @@ export interface RadiationSource {
   licenceExpiryDate?: string;
   notificationDate?: string; // 4 months before expiry
 
+  // Structured leak-test record (latest)
+  leakTestCounts?: number;
+  leakTestBackground?: number;
+  leakTestResult?: 'pass' | 'fail';
+  leakTestNotes?: string;
+  leakTestHistory?: LeakTestRecord[];
+
+  // IA lifecycle — possess → possess & use → decommissioned
+  stage?: IaStage;
+  purchaseLicenceNo?: string;
+  importLicenceNo?: string;
+  floorPlanFile?: string;
+  possessLicence?: { number?: string; expiryDate?: string; file?: string };
+  decommission?: DecommissionRecord;
+
+  // Unsealed source acquisition & consumption
+  addedDate?: string;
+  acquiredDate?: string;
+  volume?: string;
+  purchasedBy?: string;
+  vendorName?: string;
+  usageLog?: UsageLogEntry[];
+
   // back-refs
   locationId?: string;
   piId?: string;
@@ -335,19 +358,151 @@ export interface RuaGroup {
   users: { id: string; name: string; role: string }[];
 }
 
-export interface Rua {
+// ── Ionizing Radiation Program (IRP) workflow models ──
+
+export type IaStage = 'possess' | 'possess-use' | 'decommissioned';
+
+export interface LeakTestRecord {
   id: string;
+  date: string;
+  counts: number; // measured cpm
+  background: number; // background cpm
+  net: number; // counts − background
+  result: 'pass' | 'fail';
+  notes?: string;
+}
+
+export interface SwipeTestRecord {
+  id: string;
+  date: string;
+  counts: number;
+  background: number;
+  net: number;
+  result: 'clean' | 'positive' | 'adal'; // adal = above ADAL
+  followUp?: string;
+}
+
+export interface UsageLogEntry {
+  id: string;
+  date: string;
+  volume?: string;
+  activityUCi: number;
+  by?: string;
+  notes?: string;
+}
+
+export interface DecommissionRecord {
+  approvalDate: string;
+  destroyedDate: string;
+  verifiedDate: string;
+  approvalFile?: string; // Board-approved disposal PDF
+  notes?: string;
+}
+
+// Per-isotope use details within a PI group (rich RUA model)
+export interface IsotopeUseEntry {
+  iso: string;
+  description?: string;
+  limit: number; // radionuclide limit in µCi
+  chemicalForm?: string;
+  physicalForm?: string;
+  expUCi?: number; // experimental quantity
+  possUCi?: number; // possession quantity
+}
+
+export interface IrpRuaUser {
+  id: string;
+  name: string;
+  role: string;
+}
+
+export interface IrpRuaGroup {
+  id: string;
+  piId: string;
+  piName: string;
+  isotopes: (IsotopeUseEntry | string)[]; // legacy records may hold plain strings
+  users: IrpRuaUser[];
+}
+
+export interface RuaChangeRecord {
+  id: string;
+  date: string;
+  changes: string[];
+}
+
+export interface IrpRua {
+  id: string;
+  ruaNo?: string;
   spaceID: string;
   type: 'Communal' | 'Individual';
   department: string;
-  // Communal fields
-  personInCharge?: string; // name or ID of PIC
-  groups?: RuaGroup[];
-  // Individual fields
-  piId?: string;
-  piName?: string;
+  personInCharge?: string; // required for Individual
+  expiryDate?: string; // renewed annually
+  addedDate?: string;
+  renewedDate?: string;
+  lastSwipeTest?: string;
+  nextSwipeTest?: string;
+  swipeHistory?: (SwipeTestRecord | string)[];
+  safetyControls?: string[];
+  groups?: IrpRuaGroup[];
+  changeHistory?: RuaChangeRecord[];
+}
+
+export interface DoseReading {
+  id: string;
+  name: string;
+  department: string;
+  month: string; // "YYYY-MM"
+  exposure: number; // mSv
+  status: 'normal' | 'caution' | 'critical';
+  remarks?: string;
+}
+
+export interface DoseRosterEntry {
+  id: string;
+  name: string;
+  department?: string;
   isotopes?: string[];
-  users?: { id: string; name: string; role: string }[];
+  tld: boolean; // whole-body TLD badge
+  ring: boolean; // finger ring dosimeter
+  notes?: string;
+}
+
+export interface WasteContainer {
+  id: string;
+  tagNo: string;
+  wasteClass: 'Alpha' | 'Beta' | 'Gamma';
+  form: 'Solid' | 'Liquid';
+  isotope: string;
+  activityUCi: number; // estimated at collection
+  department: string;
+  spaceID: string;
+  collectedDate: string;
+  collectedBy?: string;
+  notes?: string;
+  status?: 'collected' | 'disposed';
+  disposedDate?: string;
+  disposedBy?: string;
+  disposalMethod?: string;
+  disposalNotes?: string;
+}
+
+export interface BoardDocument {
+  id: string;
+  date: string;
+  direction: 'Sent' | 'Received';
+  subject: string;
+  relatesTo?: string;
+  fileName?: string;
+  notes?: string;
+}
+
+export interface IsotopeRefEntry {
+  iso: string;
+  name: string;
+  emission: string;
+  halfLife: string;
+  energy: string;
 }
 
 export interface Equipment {
